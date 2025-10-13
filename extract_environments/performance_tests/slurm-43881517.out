@@ -1,0 +1,141 @@
+============================================================
+LAND FRACTION EXTRACTION - COMPREHENSIVE TEST
+============================================================
+Test size: 100000 positions × 3 radii = 300000 areas
+Full dataset: 730,827 positions × 3 radii = 2,192,481 areas
+
+Comparing: ThreadPool vs Sequential vs Batched
+All methods use MultiIndex O(1) lookup for track metadata
+============================================================
+
+Loading test data (100000 positions)...
+  Computing HEALPix grid...
+  Getting land fraction data reference...
+  Loading track file...
+  Computing track subset...
+  Converting to DataFrame (keeping MultiIndex)...
+  Filtering (removing NaNs)...
+  DataFrame has MultiIndex: True
+  Index names: ['tracks', 'times']
+  Calculating HEALPix indices...
+  Calculating circular areas...
+  Loading land fraction for all areas...
+  Loaded 100000 positions, 300000 areas, 338466 unique pixels
+  ✓ MCS data has MultiIndex: True
+
+============================================================
+METHOD 1: ThreadPool (16 workers)
+============================================================
+
+============================================================
+Testing: method1_parallel_current
+============================================================
+  Processing 300000 areas with 16 workers (MultiIndex O(1) lookup)...
+✓ Completed in 152.09 seconds (2.53 minutes)
+
+============================================================
+METHOD 2: Sequential + MultiIndex
+============================================================
+
+============================================================
+Testing: method3_sequential_with_lookup
+============================================================
+  Processing 300000 areas sequentially with MultiIndex lookup...
+    Progress: 10000/300000
+    Progress: 20000/300000
+    Progress: 30000/300000
+    Progress: 40000/300000
+    Progress: 50000/300000
+    Progress: 60000/300000
+    Progress: 70000/300000
+    Progress: 80000/300000
+    Progress: 90000/300000
+    Progress: 100000/300000
+    Progress: 110000/300000
+    Progress: 120000/300000
+    Progress: 130000/300000
+    Progress: 140000/300000
+    Progress: 150000/300000
+    Progress: 160000/300000
+    Progress: 170000/300000
+    Progress: 180000/300000
+    Progress: 190000/300000
+    Progress: 200000/300000
+    Progress: 210000/300000
+    Progress: 220000/300000
+    Progress: 230000/300000
+    Progress: 240000/300000
+    Progress: 250000/300000
+    Progress: 260000/300000
+    Progress: 270000/300000
+    Progress: 280000/300000
+    Progress: 290000/300000
+✓ Completed in 101.76 seconds (1.70 minutes)
+
+============================================================
+METHOD 3: Batched (batch_size=500) + MultiIndex
+============================================================
+
+============================================================
+Testing: method4_batched
+============================================================
+  Processing 300000 areas with batched approach (batch_size=500) + MultiIndex lookup...
+    Progress: 10000/300000
+    Progress: 20000/300000
+    Progress: 30000/300000
+    Progress: 40000/300000
+    Progress: 50000/300000
+    Progress: 60000/300000
+    Progress: 70000/300000
+    Progress: 80000/300000
+    Progress: 90000/300000
+    Progress: 100000/300000
+    Progress: 110000/300000
+    Progress: 120000/300000
+    Progress: 130000/300000
+    Progress: 140000/300000
+    Progress: 150000/300000
+    Progress: 160000/300000
+    Progress: 170000/300000
+    Progress: 180000/300000
+    Progress: 190000/300000
+    Progress: 200000/300000
+    Progress: 210000/300000
+    Progress: 220000/300000
+    Progress: 230000/300000
+    Progress: 240000/300000
+    Progress: 250000/300000
+    Progress: 260000/300000
+    Progress: 270000/300000
+    Progress: 280000/300000
+    Progress: 290000/300000
+✓ Completed in 100.99 seconds (1.68 minutes)
+
+============================================================
+RESULTS SUMMARY
+============================================================
+Test size: 100000 positions × 3 radii = 300000 areas
+Scaling factor: 7.31x to full dataset
+
+Method                         Time (s)     Rate (areas/s)  Est. Full (min)
+---------------------------------------------------------------------------
+★ Batched (500)                    100.99s           2971               12.3 min
+  Sequential+MultiIndex            101.76s           2948               12.4 min
+  ThreadPool (16)                  152.09s           1973               18.5 min
+
+============================================================
+RECOMMENDATION
+============================================================
+★ Best method: Batched (500)
+  Estimated time for full dataset: 12.3 minutes (0.21 hours)
+
+✓ Should complete within 30-minute debug queue limit!
+
+============================================================
+COMPARISON WITH OLD VERSION
+============================================================
+Old version: 1740 areas/sec (28 min for 2.9M areas)
+Best method: 2971 areas/sec (12.3 min estimated for 2.2M areas)
+
+✓ Performance comparable to old version! (170.7%)
+============================================================

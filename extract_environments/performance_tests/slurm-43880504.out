@@ -1,0 +1,371 @@
+Focused test: Vectorized vs Batched with 500,000 positions (1,500,000 areas)...
+============================================================
+LAND FRACTION EXTRACTION - FOCUSED TEST
+============================================================
+Test size: 500000 positions × 3 radii = 1500000 areas
+Full dataset: 730,827 positions × 3 radii = 2,192,481 areas
+
+Comparing: Vectorized (sequential) vs Batched (sequential with batching)
+Both methods do IDENTICAL work - only difference is batching
+============================================================
+
+Loading test data (500000 positions)...
+  Computing HEALPix grid...
+  Getting land fraction data reference...
+  Loading track file...
+  Computing track subset...
+  Converting to DataFrame (keeping MultiIndex)...
+  Filtering (removing NaNs)...
+  DataFrame has MultiIndex: True
+  Index names: ['tracks', 'times']
+  Calculating HEALPix indices...
+  Calculating circular areas...
+  Loading land fraction for all areas...
+  Loaded 500000 positions, 1500000 areas, 429535 unique pixels
+  ✓ MCS data has MultiIndex: True
+
+============================================================
+METHOD 1: Sequential/Vectorized (no batching)
+============================================================
+
+============================================================
+Testing: method3_vectorized
+============================================================
+  Processing 1500000 areas with vectorized approach + MultiIndex...
+    Progress: 10000/1500000
+    Progress: 20000/1500000
+    Progress: 30000/1500000
+    Progress: 40000/1500000
+    Progress: 50000/1500000
+    Progress: 60000/1500000
+    Progress: 70000/1500000
+    Progress: 80000/1500000
+    Progress: 90000/1500000
+    Progress: 100000/1500000
+    Progress: 110000/1500000
+    Progress: 120000/1500000
+    Progress: 130000/1500000
+    Progress: 140000/1500000
+    Progress: 150000/1500000
+    Progress: 160000/1500000
+    Progress: 170000/1500000
+    Progress: 180000/1500000
+    Progress: 190000/1500000
+    Progress: 200000/1500000
+    Progress: 210000/1500000
+    Progress: 220000/1500000
+    Progress: 230000/1500000
+    Progress: 240000/1500000
+    Progress: 250000/1500000
+    Progress: 260000/1500000
+    Progress: 270000/1500000
+    Progress: 280000/1500000
+    Progress: 290000/1500000
+    Progress: 300000/1500000
+    Progress: 310000/1500000
+    Progress: 320000/1500000
+    Progress: 330000/1500000
+    Progress: 340000/1500000
+    Progress: 350000/1500000
+    Progress: 360000/1500000
+    Progress: 370000/1500000
+    Progress: 380000/1500000
+    Progress: 390000/1500000
+    Progress: 400000/1500000
+    Progress: 410000/1500000
+    Progress: 420000/1500000
+    Progress: 430000/1500000
+    Progress: 440000/1500000
+    Progress: 450000/1500000
+    Progress: 460000/1500000
+    Progress: 470000/1500000
+    Progress: 480000/1500000
+    Progress: 490000/1500000
+    Progress: 500000/1500000
+    Progress: 510000/1500000
+    Progress: 520000/1500000
+    Progress: 530000/1500000
+    Progress: 540000/1500000
+    Progress: 550000/1500000
+    Progress: 560000/1500000
+    Progress: 570000/1500000
+    Progress: 580000/1500000
+    Progress: 590000/1500000
+    Progress: 600000/1500000
+    Progress: 610000/1500000
+    Progress: 620000/1500000
+    Progress: 630000/1500000
+    Progress: 640000/1500000
+    Progress: 650000/1500000
+    Progress: 660000/1500000
+    Progress: 670000/1500000
+    Progress: 680000/1500000
+    Progress: 690000/1500000
+    Progress: 700000/1500000
+    Progress: 710000/1500000
+    Progress: 720000/1500000
+    Progress: 730000/1500000
+    Progress: 740000/1500000
+    Progress: 750000/1500000
+    Progress: 760000/1500000
+    Progress: 770000/1500000
+    Progress: 780000/1500000
+    Progress: 790000/1500000
+    Progress: 800000/1500000
+    Progress: 810000/1500000
+    Progress: 820000/1500000
+    Progress: 830000/1500000
+    Progress: 840000/1500000
+    Progress: 850000/1500000
+    Progress: 860000/1500000
+    Progress: 870000/1500000
+    Progress: 880000/1500000
+    Progress: 890000/1500000
+    Progress: 900000/1500000
+    Progress: 910000/1500000
+    Progress: 920000/1500000
+    Progress: 930000/1500000
+    Progress: 940000/1500000
+    Progress: 950000/1500000
+    Progress: 960000/1500000
+    Progress: 970000/1500000
+    Progress: 980000/1500000
+    Progress: 990000/1500000
+    Progress: 1000000/1500000
+    Progress: 1010000/1500000
+    Progress: 1020000/1500000
+    Progress: 1030000/1500000
+    Progress: 1040000/1500000
+    Progress: 1050000/1500000
+    Progress: 1060000/1500000
+    Progress: 1070000/1500000
+    Progress: 1080000/1500000
+    Progress: 1090000/1500000
+    Progress: 1100000/1500000
+    Progress: 1110000/1500000
+    Progress: 1120000/1500000
+    Progress: 1130000/1500000
+    Progress: 1140000/1500000
+    Progress: 1150000/1500000
+    Progress: 1160000/1500000
+    Progress: 1170000/1500000
+    Progress: 1180000/1500000
+    Progress: 1190000/1500000
+    Progress: 1200000/1500000
+    Progress: 1210000/1500000
+    Progress: 1220000/1500000
+    Progress: 1230000/1500000
+    Progress: 1240000/1500000
+    Progress: 1250000/1500000
+    Progress: 1260000/1500000
+    Progress: 1270000/1500000
+    Progress: 1280000/1500000
+    Progress: 1290000/1500000
+    Progress: 1300000/1500000
+    Progress: 1310000/1500000
+    Progress: 1320000/1500000
+    Progress: 1330000/1500000
+    Progress: 1340000/1500000
+    Progress: 1350000/1500000
+    Progress: 1360000/1500000
+    Progress: 1370000/1500000
+    Progress: 1380000/1500000
+    Progress: 1390000/1500000
+    Progress: 1400000/1500000
+    Progress: 1410000/1500000
+    Progress: 1420000/1500000
+    Progress: 1430000/1500000
+    Progress: 1440000/1500000
+    Progress: 1450000/1500000
+    Progress: 1460000/1500000
+    Progress: 1470000/1500000
+    Progress: 1480000/1500000
+    Progress: 1490000/1500000
+✓ Completed in 344.22 seconds (5.74 minutes)
+
+============================================================
+METHOD 2: Batched (batch_size=500)
+============================================================
+
+============================================================
+Testing: method4_batched
+============================================================
+  Processing 1500000 areas with batched approach (batch_size=500, no metadata lookup)...
+    Progress: 10000/1500000
+    Progress: 20000/1500000
+    Progress: 30000/1500000
+    Progress: 40000/1500000
+    Progress: 50000/1500000
+    Progress: 60000/1500000
+    Progress: 70000/1500000
+    Progress: 80000/1500000
+    Progress: 90000/1500000
+    Progress: 100000/1500000
+    Progress: 110000/1500000
+    Progress: 120000/1500000
+    Progress: 130000/1500000
+    Progress: 140000/1500000
+    Progress: 150000/1500000
+    Progress: 160000/1500000
+    Progress: 170000/1500000
+    Progress: 180000/1500000
+    Progress: 190000/1500000
+    Progress: 200000/1500000
+    Progress: 210000/1500000
+    Progress: 220000/1500000
+    Progress: 230000/1500000
+    Progress: 240000/1500000
+    Progress: 250000/1500000
+    Progress: 260000/1500000
+    Progress: 270000/1500000
+    Progress: 280000/1500000
+    Progress: 290000/1500000
+    Progress: 300000/1500000
+    Progress: 310000/1500000
+    Progress: 320000/1500000
+    Progress: 330000/1500000
+    Progress: 340000/1500000
+    Progress: 350000/1500000
+    Progress: 360000/1500000
+    Progress: 370000/1500000
+    Progress: 380000/1500000
+    Progress: 390000/1500000
+    Progress: 400000/1500000
+    Progress: 410000/1500000
+    Progress: 420000/1500000
+    Progress: 430000/1500000
+    Progress: 440000/1500000
+    Progress: 450000/1500000
+    Progress: 460000/1500000
+    Progress: 470000/1500000
+    Progress: 480000/1500000
+    Progress: 490000/1500000
+    Progress: 500000/1500000
+    Progress: 510000/1500000
+    Progress: 520000/1500000
+    Progress: 530000/1500000
+    Progress: 540000/1500000
+    Progress: 550000/1500000
+    Progress: 560000/1500000
+    Progress: 570000/1500000
+    Progress: 580000/1500000
+    Progress: 590000/1500000
+    Progress: 600000/1500000
+    Progress: 610000/1500000
+    Progress: 620000/1500000
+    Progress: 630000/1500000
+    Progress: 640000/1500000
+    Progress: 650000/1500000
+    Progress: 660000/1500000
+    Progress: 670000/1500000
+    Progress: 680000/1500000
+    Progress: 690000/1500000
+    Progress: 700000/1500000
+    Progress: 710000/1500000
+    Progress: 720000/1500000
+    Progress: 730000/1500000
+    Progress: 740000/1500000
+    Progress: 750000/1500000
+    Progress: 760000/1500000
+    Progress: 770000/1500000
+    Progress: 780000/1500000
+    Progress: 790000/1500000
+    Progress: 800000/1500000
+    Progress: 810000/1500000
+    Progress: 820000/1500000
+    Progress: 830000/1500000
+    Progress: 840000/1500000
+    Progress: 850000/1500000
+    Progress: 860000/1500000
+    Progress: 870000/1500000
+    Progress: 880000/1500000
+    Progress: 890000/1500000
+    Progress: 900000/1500000
+    Progress: 910000/1500000
+    Progress: 920000/1500000
+    Progress: 930000/1500000
+    Progress: 940000/1500000
+    Progress: 950000/1500000
+    Progress: 960000/1500000
+    Progress: 970000/1500000
+    Progress: 980000/1500000
+    Progress: 990000/1500000
+    Progress: 1000000/1500000
+    Progress: 1010000/1500000
+    Progress: 1020000/1500000
+    Progress: 1030000/1500000
+    Progress: 1040000/1500000
+    Progress: 1050000/1500000
+    Progress: 1060000/1500000
+    Progress: 1070000/1500000
+    Progress: 1080000/1500000
+    Progress: 1090000/1500000
+    Progress: 1100000/1500000
+    Progress: 1110000/1500000
+    Progress: 1120000/1500000
+    Progress: 1130000/1500000
+    Progress: 1140000/1500000
+    Progress: 1150000/1500000
+    Progress: 1160000/1500000
+    Progress: 1170000/1500000
+    Progress: 1180000/1500000
+    Progress: 1190000/1500000
+    Progress: 1200000/1500000
+    Progress: 1210000/1500000
+    Progress: 1220000/1500000
+    Progress: 1230000/1500000
+    Progress: 1240000/1500000
+    Progress: 1250000/1500000
+    Progress: 1260000/1500000
+    Progress: 1270000/1500000
+    Progress: 1280000/1500000
+    Progress: 1290000/1500000
+    Progress: 1300000/1500000
+    Progress: 1310000/1500000
+    Progress: 1320000/1500000
+    Progress: 1330000/1500000
+    Progress: 1340000/1500000
+    Progress: 1350000/1500000
+    Progress: 1360000/1500000
+    Progress: 1370000/1500000
+    Progress: 1380000/1500000
+    Progress: 1390000/1500000
+    Progress: 1400000/1500000
+    Progress: 1410000/1500000
+    Progress: 1420000/1500000
+    Progress: 1430000/1500000
+    Progress: 1440000/1500000
+    Progress: 1450000/1500000
+    Progress: 1460000/1500000
+    Progress: 1470000/1500000
+    Progress: 1480000/1500000
+    Progress: 1490000/1500000
+✓ Completed in 342.14 seconds (5.70 minutes)
+
+============================================================
+RESULTS SUMMARY
+============================================================
+Test size: 500000 positions × 3 radii = 1500000 areas
+Scaling factor: 1.46x to full dataset
+
+Method                         Time (s)     Rate (areas/s)  Est. Full (min)
+---------------------------------------------------------------------------
+★ Batched (500)                    342.14s           4384                8.3 min
+  Sequential                       344.22s           4358                8.4 min
+
+============================================================
+RECOMMENDATION
+============================================================
+★ Best method: Batched (500)
+  Estimated time for full dataset: 8.3 minutes (0.14 hours)
+
+✓ Should complete within 30-minute debug queue limit!
+
+============================================================
+COMPARISON WITH OLD VERSION
+============================================================
+Old version: 1740 areas/sec (28 min for 2.9M areas)
+Best method: 4384 areas/sec (8.3 min estimated for 2.2M areas)
+
+✓ Performance comparable to old version! (252.0%)
+============================================================

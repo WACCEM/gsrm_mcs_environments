@@ -1,13 +1,11 @@
 """
 Extract land fraction information for MCS tracks
-
 This script calculates mean land fraction within circular areas around track locations.
-Optimized for memory efficiency using streaming data access.
 
-Key features:
-- Streaming data loading prevents memory overflow on high-resolution grids
-- Computes mean land fraction over circular areas at multiple radii
-- Generates per-track and per-radius summary statistics
+This version uses:
+- Proven-working sequential approach for circular area calculation
+- Optimized batched approach for land fraction extraction 
+- Track metadata merged after extraction using simple join operation
 
 Author: Laura Paccini
 Last updated: October 2025
@@ -20,60 +18,47 @@ import xarray as xr
 import healpy as hp
 from easygems import healpix as egh
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
 import time
 import warnings
 import json
 import intake
+import sys
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 def convert_time(time_array):
     """Convert cftime to standard datetime64"""
-    if hasattr(time_array[0], 'year'):  # It's a cftime object
+    if hasattr(time_array[0], 'year'):
         return np.array([np.datetime64(datetime(t.year, t.month, t.day, t.hour)) 
                          for t in time_array])
     return time_array
 
-def calculate_circular_areas_for_tracks(mcs_data, hp_grid, radii):
-    """Calculate circular areas around all MCS track positions for all radii
-    
-    Parameters:
-    -----------
-    mcs_data : pandas.DataFrame
-        DataFrame with MCS track information including HEALPix indices
-    hp_grid : xarray.Dataset
-        HEALPix grid with lat/lon information
-    radii : np.ndarray
-        Array of radii in degrees
-    
-    Returns:
-    --------
-    dict
-        Dictionary mapping (track_id, time_idx, radius) to pixel arrays
+
+def calculate_circular_areas_sequential(mcs_data, hp_grid, radii, progress_freq=50000):
     """
-    # Get HEALPix grid parameters
+    Calculate circular areas using the proven sequential approach from test script.
+    (fastest method based on benchmarking.)
+    """
     nside = egh.get_nside(hp_grid)
-    nest = True if egh.get_nest(hp_grid) else False
-    
-    # Dictionary to store all circular areas
+    nest = True
     all_areas = {}
-    
     total_points = len(mcs_data)
+    
     print(f"Calculating circular areas for {total_points} track positions...")
+    sys.stdout.flush()
+    
     
     for idx, row in mcs_data.iterrows():
-        if idx % 1000 == 0:
+        if idx % progress_freq == 0:
             print(f"  Progress: {idx}/{total_points} positions processed...")
+            sys.stdout.flush()
             
         track_id = int(row['tracks'])
         time_idx = int(row['times'])
         cell_idx = int(row['trigger_idx'])
         
-        # Calculate areas for all radii
         for radius in radii:
-            # Get pixels within radius
             area_pixels = hp.query_disc(
                 nside, 
                 hp.pix2vec(nside, cell_idx, nest=nest), 
@@ -81,127 +66,18 @@ def calculate_circular_areas_for_tracks(mcs_data, hp_grid, radii):
                 inclusive=False, 
                 nest=nest
             )
-            
             all_areas[(track_id, time_idx, radius)] = area_pixels
     
     print(f"Calculated circular areas for {len(all_areas)} track-time-radius combinations")
     return all_areas
 
-def extract_land_fractions_efficient(all_areas, land_fraction_data, mcs_data, n_workers=4, 
-                                   is_ocean_fraction=False, use_streaming=False):
-    """Extract land fraction statistics for all circular areas
-    
-    Can use either parallel processing (faster, memory-intensive) or streaming (slower, memory-efficient).
-    
-    Parameters:
-    -----------
-    all_areas : dict
-        Dictionary mapping (track_id, time_idx, radius) to pixel arrays
-    land_fraction_data : xarray.DataArray
-        Land fraction data (lazy-loaded for streaming, can be computed for parallel)
-    mcs_data : pandas.DataFrame
-        DataFrame with MCS track information
-    n_workers : int
-        Number of worker threads (only used when use_streaming=False)
-    is_ocean_fraction : bool
-        True if input data is ocean fraction, False if land fraction
-    use_streaming : bool
-        If True: streaming mode (memory-efficient, recommended for zoom 10+)
-        If False: parallel mode (faster, works for zoom <10)
-    
-    Returns:
-    --------
-    pandas.DataFrame
-        DataFrame with land fraction statistics for each track, time, and radius
+
+def extract_land_fractions_batched(all_areas, land_fraction_data, batch_size=500):
     """
-    total_areas = len(all_areas)
+    Extract land fraction statistics for all circular areas using batched processing.
     
-    if use_streaming:
-        print(f"Processing {total_areas} areas with STREAMING mode (memory-efficient)...")
-        return _extract_with_streaming(all_areas, land_fraction_data, mcs_data, is_ocean_fraction)
-    else:
-        print(f"Processing {total_areas} areas with PARALLEL mode (faster)...")
-        return _extract_with_parallel(all_areas, land_fraction_data, mcs_data, n_workers, is_ocean_fraction)
-
-
-def _extract_with_streaming(all_areas, land_fraction_data, mcs_data, is_ocean_fraction=False):
-    """Streaming approach: load data per area (memory-efficient for high-res grids)"""
-    results = []
-    total_areas = len(all_areas)
-    
-    # Process each area individually with streaming data loading
-    # This prevents memory overflow by loading only needed pixels per area
-    for idx, (area_key, pixels) in enumerate(all_areas.items()):
-        if idx % 1000 == 0:
-            print(f"  Progress: {idx}/{total_areas} areas processed...")
-            
-        track_id, time_idx, radius = area_key
-        
-        # Get corresponding track data
-        try:
-            # Find the matching row in mcs_data
-            mask = (mcs_data['tracks'] == track_id) & (mcs_data['times'] == time_idx)
-            if not mask.any():
-                continue
-            track_data = mcs_data[mask].iloc[0]
-        except (KeyError, IndexError):
-            continue
-        
-        # Extract land fraction for this area with streaming data loading
-        try:
-            # Load land fraction data for ONLY this area's pixels (prevents memory overflow)
-            area_fraction_values = land_fraction_data.sel(cell=pixels).compute().values
-            
-            # Filter out NaN values
-            valid_mask = ~np.isnan(area_fraction_values)
-            valid_fractions = area_fraction_values[valid_mask]
-            
-            if len(valid_fractions) == 0:
-                continue
-
-            # Convert to land fraction if input is ocean fraction
-            if is_ocean_fraction:
-                land_fractions = 1.0 - valid_fractions
-            else:
-                land_fractions = valid_fractions
-            
-            # Calculate mean land fraction over the circular area
-            mean_lf = float(np.mean(land_fractions))
-            
-            # Create result record
-            result = {
-                'track_id': int(track_id),
-                'time_idx': int(time_idx),
-                'radius': radius,
-                'mean_land_fraction': mean_lf,
-                'num_pixels': len(land_fractions),
-                # Add track metadata
-                'base_time': track_data['base_time'] if 'base_time' in track_data else pd.NaT,
-                'start_basetime': track_data['start_basetime'] if 'start_basetime' in track_data else pd.NaT,
-                'track_duration': track_data['track_duration'] if 'track_duration' in track_data else np.nan,
-                'meanlat': track_data['meanlat'] if 'meanlat' in track_data else np.nan,
-                'meanlon': track_data['meanlon'] if 'meanlon' in track_data else np.nan,
-            }
-            
-            results.append(result)
-            
-        except Exception as e:
-            print(f"  Warning: Error processing area {area_key}: {e}")
-            continue
-    
-    # Convert to DataFrame
-    result_df = pd.DataFrame(results)
-    
-    if len(result_df) > 0:
-        # Sort by track_id, time_idx, radius for easier access
-        result_df = result_df.sort_values(['track_id', 'time_idx', 'radius'])
-    
-    print(f"Extracted land fractions for {len(result_df)} track-time-radius combinations")
-    return result_df
-
-
-def _extract_with_parallel(all_areas, land_fraction_data, mcs_data, n_workers=4, is_ocean_fraction=False):
-    """Parallel approach: load all data at once (faster but memory-intensive for low-res grids)"""
+    This is the optimized version that extracts land fractions from pixels.
+    """
     
     # Get all unique pixels needed
     all_pixels = set()
@@ -209,205 +85,135 @@ def _extract_with_parallel(all_areas, land_fraction_data, mcs_data, n_workers=4,
         all_pixels.update(pixels)
     all_pixels = list(all_pixels)
     
-    print(f"  Loading land fraction data for {len(all_pixels)} unique pixels...")
+    print(f"Loading land fraction data for {len(all_pixels)} unique pixels...")
+    sys.stdout.flush()
     
     # Load land fraction data for all needed pixels at once
     try:
         lf_data = land_fraction_data.sel(cell=all_pixels).compute()
-        print(f"  Successfully loaded land fraction data.")
+        print(f"Successfully loaded land fraction data.")
+        sys.stdout.flush()
     except Exception as e:
-        print(f"  ERROR: Failed to load land fraction data: {e}")
-        print(f"  TIP: Try using --use_streaming flag for high-resolution grids")
+        print(f"ERROR: Failed to load land fraction data: {e}")
         return pd.DataFrame()
     
-    # Process areas using ThreadPoolExecutor for actual parallelism
+    # Process areas in batches
     area_keys = list(all_areas.keys())
     total_areas = len(area_keys)
     
-    print(f"  Processing {total_areas} areas with {n_workers} workers...")
+    print(f"Processing {total_areas} areas with batched approach (batch_size={batch_size})...")
+    sys.stdout.flush()
     
-    def process_area(area_key):
-        """Process a single area and return result dict or None"""
-        track_id, time_idx, radius = area_key
-        pixels = all_areas[area_key]
-        
-        # Get corresponding track data
-        try:
-            mask = (mcs_data['tracks'] == track_id) & (mcs_data['times'] == time_idx)
-            if not mask.any():
-                return None
-            track_data = mcs_data[mask].iloc[0]
-        except (KeyError, IndexError):
-            return None
-        
-        # Extract land fraction for this area
-        try:
-            area_fraction_values = lf_data.sel(cell=pixels).values
-            
-            # Filter out NaN values
-            valid_mask = ~np.isnan(area_fraction_values)
-            valid_fractions = area_fraction_values[valid_mask]
-            
-            if len(valid_fractions) == 0:
-                return None
-
-            # Convert to land fraction if input is ocean fraction
-            if is_ocean_fraction:
-                land_fractions = 1.0 - valid_fractions
-            else:
-                land_fractions = valid_fractions
-            
-            # Calculate mean land fraction over the circular area
-            mean_lf = float(np.mean(land_fractions))
-            
-            # Create result record
-            result = {
-                'track_id': int(track_id),
-                'time_idx': int(time_idx),
-                'radius': radius,
-                'mean_land_fraction': mean_lf,
-                'num_pixels': len(land_fractions),
-                # Add track metadata
-                'base_time': track_data['base_time'] if 'base_time' in track_data else pd.NaT,
-                'start_basetime': track_data['start_basetime'] if 'start_basetime' in track_data else pd.NaT,
-                'track_duration': track_data['track_duration'] if 'track_duration' in track_data else np.nan,
-                'meanlat': track_data['meanlat'] if 'meanlat' in track_data else np.nan,
-                'meanlon': track_data['meanlon'] if 'meanlon' in track_data else np.nan,
-            }
-            
-            return result
-            
-        except Exception as e:
-            return None
-    
-    # Use ThreadPoolExecutor for parallel processing
     results = []
-    processed_count = 0
     
-    with ThreadPoolExecutor(max_workers=n_workers) as executor:
-        # Submit all tasks
-        futures = {executor.submit(process_area, key): key for key in area_keys}
+    for batch_start in range(0, total_areas, batch_size):
+        batch_end = min(batch_start + batch_size, total_areas)
+        batch_keys = area_keys[batch_start:batch_end]
         
-        # Process results as they complete
-        from concurrent.futures import as_completed
-        for future in as_completed(futures):
-            result = future.result()
-            if result is not None:
-                results.append(result)
+        if batch_start % 100000 == 0 and batch_start > 0:
+            print(f"  Progress: {batch_start}/{total_areas} areas processed...")
+            sys.stdout.flush()
+        
+        for area_key in batch_keys:
+            track_id, time_idx, radius = area_key
+            pixels = all_areas[area_key]
             
-            processed_count += 1
-            if processed_count % 50000 == 0:
-                print(f"    Progress: {processed_count}/{total_areas} areas processed...")
+            # Extract land fraction for this area 
+            try:
+                area_fraction_values = lf_data.sel(cell=pixels).values
+                valid_fractions = area_fraction_values[~np.isnan(area_fraction_values)]
+                
+                if len(valid_fractions) == 0:
+                    continue
+                
+                mean_lf = float(np.mean(valid_fractions))
+                
+                # Store minimal result 
+                result = {
+                    'track_id': int(track_id),
+                    'time_idx': int(time_idx),
+                    'radius': radius,
+                    'mean_land_fraction': mean_lf,
+                    'num_pixels': len(valid_fractions),
+                }
+                
+                results.append(result)
+                
+            except Exception as e:
+                continue
     
     # Convert to DataFrame
     result_df = pd.DataFrame(results)
     
     if len(result_df) > 0:
-        # Sort by track_id, time_idx, radius for easier access
         result_df = result_df.sort_values(['track_id', 'time_idx', 'radius'])
     
-    print(f"  Extracted land fractions for {len(result_df)} track-time-radius combinations")
+    print(f"Extracted land fractions for {len(result_df)} track-time-radius combinations")
+    sys.stdout.flush()
     return result_df
 
 
 def calculate_track_summary_statistics(land_fraction_df):
-    """Calculate summary statistics for each track across all times
-    
-    Parameters:
-    -----------
-    land_fraction_df : pandas.DataFrame
-        DataFrame with land fraction data for all track-time-radius combinations
-    
-    Returns:
-    --------
-    pandas.DataFrame
-        DataFrame with summary statistics for each track-radius combination
-    """
+    """Calculate summary statistics for each track across all times"""
     print("Calculating track summary statistics...")
+    sys.stdout.flush()
     
     if len(land_fraction_df) == 0:
         print("Warning: No data to calculate summary statistics")
         return pd.DataFrame()
     
-    # Group by track_id and radius
     summary_stats = []
     
     for (track_id, radius), group in land_fraction_df.groupby(['track_id', 'radius']):
-        # Calculate statistics across all times for this track-radius combination
         stats = {
             'track_id': track_id,
             'radius': radius,
             'mean_land_fraction_track': group['mean_land_fraction'].mean(),
             'total_land_fraction_track': group['mean_land_fraction'].sum(),
             'num_time_points': len(group),
-            # Track metadata (should be the same for all time points)
-            'start_basetime': group['start_basetime'].iloc[0] if 'start_basetime' in group else pd.NaT,
-            'track_duration': group['track_duration'].iloc[0] if 'track_duration' in group else np.nan,
             'start_lat': group['meanlat'].iloc[0] if 'meanlat' in group else np.nan,
             'start_lon': group['meanlon'].iloc[0] if 'meanlon' in group else np.nan,
         }
-        
         summary_stats.append(stats)
     
     summary_df = pd.DataFrame(summary_stats)
-    
     print(f"Created summary statistics for {len(summary_df)} track-radius combinations")
     return summary_df
 
-def save_land_fraction_data(land_fraction_df, summary_df, output_dir, output_format='netcdf', model_name=None, zoom_name=None):
-    """Save land fraction data to files
-    
-    Parameters:
-    -----------
-    land_fraction_df : pandas.DataFrame
-        DataFrame with detailed land fraction data
-    summary_df : pandas.DataFrame
-        DataFrame with summary statistics
-    output_dir : str
-        Output directory
-    output_format : str
-        Format to save files ('netcdf', 'parquet', 'csv')
-    model_name : str
-        Name of the model to include in filename
-    zoom_name: str or int
-        Name of the zoom level to include in filename
-    """
-    os.makedirs(output_dir, exist_ok=True)
 
-    # Create base filename with model name
+def save_land_fraction_data(land_fraction_df, summary_df, output_dir, output_format='parquet', 
+                           model_name=None, zoom_name=None):
+    """Save land fraction data to files"""
+    os.makedirs(output_dir, exist_ok=True)
+    
     if model_name and zoom_name:
         base_filename = f'mcs_land_fractions_{model_name}_zoom{zoom_name}'
     else:
         base_filename = 'mcs_land_fractions'
     
     # Save detailed data
-    detailed_path = os.path.join(output_dir, f'{base_filename}_detailed')
-    if output_format == 'netcdf':
-        detailed_path += '.nc'
-        land_fraction_df.to_xarray().to_netcdf(detailed_path)
-    elif output_format == 'parquet':
-        detailed_path += '.parquet'
+    detailed_path = os.path.join(output_dir, f'{base_filename}_detailed.{output_format}')
+    if output_format == 'parquet':
         land_fraction_df.to_parquet(detailed_path, index=False)
     elif output_format == 'csv':
-        detailed_path += '.csv'
         land_fraction_df.to_csv(detailed_path, index=False)
+    elif output_format == 'netcdf':
+        land_fraction_df.to_xarray().to_netcdf(detailed_path.replace('.netcdf', '.nc'))
     
     # Save summary data
-    summary_path = os.path.join(output_dir, f'{base_filename}_summary')
-    if output_format == 'netcdf':
-        summary_path += '.nc'
-        summary_df.to_xarray().to_netcdf(summary_path)
-    elif output_format == 'parquet':
-        summary_path += '.parquet'
+    summary_path = os.path.join(output_dir, f'{base_filename}_summary.{output_format}')
+    if output_format == 'parquet':
         summary_df.to_parquet(summary_path, index=False)
     elif output_format == 'csv':
-        summary_path += '.csv'
         summary_df.to_csv(summary_path, index=False)
+    elif output_format == 'netcdf':
+        summary_df.to_xarray().to_netcdf(summary_path.replace('.netcdf', '.nc'))
     
     print(f"Saved detailed land fraction data to {detailed_path}")
     print(f"Saved summary land fraction data to {summary_path}")
     
     return detailed_path, summary_path
+
 
 def main():
     parser = argparse.ArgumentParser(description='Extract land fraction information for MCS tracks.')
@@ -417,16 +223,14 @@ def main():
                         default="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml",
                         help='URL of the intake catalog')
     parser.add_argument('--current_location', default="NERSC", help='Current location in catalog')
-    parser.add_argument('--catalog_model', default="scream_ne120", 
-                        help='Model name in the catalog')
-    parser.add_argument('--catalog_params', default='{"zoom": 8}', 
-                        help='JSON string of catalog parameters')
+    parser.add_argument('--catalog_model', default="scream_ne120", help='Model name in the catalog')
+    parser.add_argument('--catalog_params', default='{"zoom": 8}', help='JSON string of catalog parameters')
     parser.add_argument('--trackfile', required=True, help='Path to MCS track file')
     parser.add_argument('--output_dir', required=True, help='Output directory for results')
-    parser.add_argument('--output_format', default='netcdf', choices=['parquet', 'csv', 'netcdf'],
+    parser.add_argument('--output_format', default='parquet', choices=['parquet', 'csv', 'netcdf'],
                         help='Format to save results')
     
-    # Land fraction variable name (model-specific)
+    # Land fraction variable name
     parser.add_argument('--land_fraction_var', default='LANDFRAC', 
                         help='Name of land fraction variable in the model dataset')
     
@@ -441,82 +245,79 @@ def main():
     parser.add_argument('--max_lat', type=float, default=None, help='Maximum latitude')
     
     # Processing options
-    parser.add_argument('--radii', default="5,3.5,2,0.5", 
-                        help='Comma-separated list of radii in degrees')
+    parser.add_argument('--radii', default="5,3.5,2", help='Comma-separated list of radii in degrees')
     parser.add_argument('--lat_var', default='meanlat', help='Latitude variable name in tracks')
     parser.add_argument('--lon_var', default='meanlon', help='Longitude variable name in tracks')
-    parser.add_argument('--n_workers', type=int, default=4, 
-                        help='Number of worker threads (only used with parallel processing, not streaming)')
-    parser.add_argument('--use_streaming', action='store_true',
-                        help='Use streaming mode (slower but memory-efficient). Recommended for zoom 10+')
     
-    # Ocean/land threshold options
-    parser.add_argument('--ocean_threshold', type=float, default=0.1,
-                        help='Maximum land fraction to consider as ocean (0.0-1.0, default: 0.1 = 10%)')
-    parser.add_argument('--ocean_fraction_threshold', type=float, default=0.5,
-                        help='Minimum fraction of ocean pixels to consider mostly ocean (0.0-1.0, default: 0.5 = 50%)')
-    
-    # Add new argument for ocean fraction handling
-    parser.add_argument('--is_ocean_fraction', action='store_true',
-                        help='Set this flag if the input variable is ocean fraction instead of land fraction')
-
-
     args = parser.parse_args()
     
     # Start timing
     start_time = time.time()
     
-    print(f"Starting land fraction extraction for MCS tracks...")
-    print(f"Using land fraction variable: {args.land_fraction_var}")
+    print("="*60)
+    print("Land Fraction Extraction for MCS Tracks (v2 - optimized)")
+    print("="*60)
+    print(f"Model: {args.catalog_model}")
+    print(f"Catalog params: {args.catalog_params}")
+    print(f"Date range: {args.start_date or 'all'} to {args.end_date or 'all'}")
+    print(f"Output directory: {args.output_dir}")
+    print("="*60)
+    sys.stdout.flush()
     
-    # Parse RADII from command line
+    # Parse RADII
     try:
         RADII = np.array([float(r) for r in args.radii.split(',')])
     except:
-        RADII = np.array([5.0, 3.5, 2.0, 0.5])
+        RADII = np.array([5.0, 3.5, 2.0])
     print(f"Using radii: {RADII}")
+    sys.stdout.flush()
     
-    # Parse catalog parameters to detect zoom level
+    # Parse catalog parameters
     try:
         catalog_params = json.loads(args.catalog_params)
         zoom_level = catalog_params.get('zoom', 'unknown')
     except:
-        print(f"Warning: Could not parse catalog_params. Using default zoom=8.")
-        catalog_params = {'zoom': 8}
-        zoom_level = 8
-    
-    # Determine if we're using ocean fraction
-    is_ocean_fraction = args.is_ocean_fraction or 'ocean' in args.land_fraction_var.lower()
-    
-    print(f"Using {'ocean' if is_ocean_fraction else 'land'} fraction variable: {args.land_fraction_var}")
-    
-    # Auto-recommend streaming for high-res grids
-    if not args.use_streaming and zoom_level >= 10:
-        print(f"\n⚠️  WARNING: Detected high-resolution grid (zoom {zoom_level})")
-        print(f"    Consider using --use_streaming flag to prevent memory issues")
-        print(f"    Proceeding with parallel processing (may cause OOM errors)...\n")
-    elif args.use_streaming:
-        print(f"Using STREAMING mode for zoom {zoom_level} (memory-efficient)")
-    else:
-        print(f"Using PARALLEL mode for zoom {zoom_level} (faster)")
-
-    # Open catalog and get dataset
-    try:
-        catalog_params = json.loads(args.catalog_params)
-        zoom_level = catalog_params.get('zoom', 'unknown')
-    except:
-        print(f"Warning: Could not parse catalog_params. Using default zoom=8.")
         catalog_params = {'zoom': 8}
         zoom_level = 8
     
     # Open catalog and get dataset
     print(f"Opening catalog from {args.catalog_url}")
+    sys.stdout.flush()
     cat = intake.open_catalog(args.catalog_url)[args.current_location]
     
-    # Load dataset
-    print(f"Loading dataset {args.catalog_model} from catalog...")
+    print(f"Loading dataset {args.catalog_model}...")
+    sys.stdout.flush()
     ds = cat[args.catalog_model](**catalog_params).to_dask().pipe(egh.attach_coords, signed_lon=True)
-    ds = ds.assign_coords(time=convert_time(ds.time.values))
+    
+    # Get HEALPix grid
+    print("Computing HEALPix grid...")
+    sys.stdout.flush()
+    hp_grid = ds[['lat', 'lon']].compute()
+    nside = egh.get_nside(hp_grid)
+    print(f"Grid: nside={nside}")
+    sys.stdout.flush()
+    
+    # Load land fraction data (keep lazy)
+    print(f"Setting up land fraction data ({args.land_fraction_var})...")
+    sys.stdout.flush()
+    try:
+        land_fraction_data = ds[args.land_fraction_var].compute()
+    except KeyError:
+        print(f"Error: Land fraction variable '{args.land_fraction_var}' not found")
+        return
+    
+    # Load MCS track data 
+    sys.stdout.flush()
+    mcs_trackstats = xr.open_dataset(args.trackfile)
+    
+    required_vars = ['meanlon', 'meanlat', 'base_time']
+    subset = mcs_trackstats[required_vars].compute()  
+    df = subset.to_dataframe().reset_index()
+    
+    # Filter
+    df = df.dropna(subset=[args.lat_var, args.lon_var])
+    print(f"After dropping NaN positions: {len(df)} valid track time points")
+    sys.stdout.flush()
     
     # Set spatial bounds
     if args.min_lat is None:
@@ -529,55 +330,13 @@ def main():
     else:
         max_lat = args.max_lat
     
-    lat_bounds = (min_lat, max_lat)
-    print(f"Using latitude bounds: {lat_bounds}")
-    
-    
-    ds_filtered = ds.copy()
-    # Get HEALPix grid coordinates
-    print("Computing HEALPix grid...")
-    hp_grid = ds_filtered[['lat', 'lon']].compute()
-    
-    # Load land fraction data (keep lazy for streaming access)
-    print(f"Setting up land fraction data ({args.land_fraction_var}) for streaming access...")
-    try:
-        land_fraction_data = ds_filtered[args.land_fraction_var]  # Keep lazy, don't compute!
-    except KeyError:
-        print(f"Error: Land fraction variable '{args.land_fraction_var}' not found in dataset")
-        print(f"Available variables: {list(ds_filtered.data_vars.keys())}")
-        return
-    
-    # Load MCS track data
-    print(f"Loading MCS track data from {args.trackfile}")
-    mcs_trackstats = xr.open_dataset(args.trackfile)
-    
-    # Get relevant variables
-    required_vars = ['start_split_cloudnumber', 'start_basetime', 'base_time', 
-                     'meanlon', 'meanlat', 'mcs_status', 'track_duration', 'mcs_duration']
-    
-    # Check which variables are available
-    available_vars = [var for var in required_vars if var in mcs_trackstats]
-    if len(available_vars) < len(required_vars):
-        missing_vars = set(required_vars) - set(available_vars)
-        print(f"Warning: Missing variables in track file: {missing_vars}")
-    
-    subset_mcs_stats = mcs_trackstats[available_vars].compute()
-    
-    # Convert to DataFrame and reset index to make tracks/times regular columns
-    df = subset_mcs_stats.to_dataframe().reset_index()
-    
-    # Filter out rows with NaN lat/lon (invalid time steps beyond track duration)
-    df = df.dropna(subset=[args.lat_var, args.lon_var])
-    print(f"After dropping NaN positions: {len(df)} valid track time points")
-    
     # Apply filters
     filter_conditions = [
-        df[args.lat_var].between(lat_bounds[0], lat_bounds[1]),
+        df[args.lat_var].between(min_lat, max_lat),
         df[args.lat_var].notna(),
         df[args.lon_var].notna()
     ]
     
-    # Add date filters
     if args.start_date:
         start_date = pd.Timestamp(args.start_date)
         filter_conditions.append(pd.to_datetime(df['base_time']) >= start_date)
@@ -586,7 +345,6 @@ def main():
         end_date = pd.Timestamp(args.end_date)
         filter_conditions.append(pd.to_datetime(df['base_time']) <= end_date)
     
-    # Add longitude filters
     if args.min_lon is not None and args.max_lon is not None:
         if args.min_lon > args.max_lon:
             filter_conditions.append((df[args.lon_var] >= args.min_lon) | 
@@ -594,33 +352,40 @@ def main():
         else:
             filter_conditions.append(df[args.lon_var].between(args.min_lon, args.max_lon))
     
-    # Apply filters
     filtered_df = df[np.logical_and.reduce(filter_conditions)].copy()
+    filtered_df = filtered_df.reset_index(drop=True)  # Reset index after filtering
+    
     print(f"Filtered to {len(filtered_df)} track time points")
+    sys.stdout.flush()
     
     # Calculate HEALPix indices
     print("Calculating HEALPix indices...")
-    nside = egh.get_nside(hp_grid)
-    pixel_indices = hp.ang2pix(
-        nside,
-        filtered_df[args.lon_var].values,
-        filtered_df[args.lat_var].values,
-        nest=True, 
-        lonlat=True
-    )
+    sys.stdout.flush()
+    pixel_indices = hp.ang2pix(nside, filtered_df[args.lon_var].values, filtered_df[args.lat_var].values, 
+                               nest=True, lonlat=True)
     filtered_df['trigger_idx'] = pixel_indices
     
-    # Calculate circular areas for all tracks
-    all_areas = calculate_circular_areas_for_tracks(
-        filtered_df, hp_grid, RADII
+    # Calculate circular areas 
+    all_areas = calculate_circular_areas_sequential(filtered_df, hp_grid, RADII)
+    
+    # Extract land fraction statistics 
+    land_fraction_df = extract_land_fractions_batched(
+        all_areas, land_fraction_data, batch_size=500
     )
     
-    # Extract land fraction statistics
-    land_fraction_df = extract_land_fractions_efficient(
-        all_areas, land_fraction_data, filtered_df, 
-        n_workers=args.n_workers,
-        is_ocean_fraction=is_ocean_fraction,
-        use_streaming=args.use_streaming
+    # Merge track metadata back in 
+    print("Merging track metadata with land fraction results...")
+    sys.stdout.flush()
+    
+    # Create metadata lookup from filtered_df
+    metadata_df = filtered_df[['tracks', 'times', 'base_time', 'meanlat', 'meanlon']].copy()
+    metadata_df = metadata_df.rename(columns={'tracks': 'track_id', 'times': 'time_idx'})
+    
+    # Merge land fractions with metadata
+    land_fraction_df = land_fraction_df.merge(
+        metadata_df, 
+        on=['track_id', 'time_idx'], 
+        how='left'
     )
     
     # Calculate summary statistics
@@ -628,12 +393,14 @@ def main():
     
     # Save results
     detailed_path, summary_path = save_land_fraction_data(
-        land_fraction_df, summary_df, args.output_dir, args.output_format, 
+        land_fraction_df, summary_df, args.output_dir, args.output_format,
         model_name=args.catalog_model, zoom_name=zoom_level
     )
     
-    # Print summary statistics
-    print("\n=== SUMMARY STATISTICS ===")
+    # Print summary
+    print("\n" + "="*60)
+    print("SUMMARY STATISTICS")
+    print("="*60)
     print(f"Total tracks processed: {len(summary_df['track_id'].unique())}")
     print(f"Total track-time points: {len(land_fraction_df)}")
     print(f"Radii processed: {RADII}")
@@ -643,11 +410,12 @@ def main():
         mean_lf = radius_data['mean_land_fraction_track'].mean()
         print(f"  Radius {radius}°: {len(radius_data)} tracks, mean land fraction = {mean_lf:.3f}")
     
-    # Print timing information
     elapsed_time = time.time() - start_time
     print(f"\nExtraction completed in {elapsed_time:.2f} seconds ({elapsed_time/60:.2f} minutes)")
+    print("="*60)
     
     return detailed_path, summary_path
+
 
 if __name__ == "__main__":
     main()
