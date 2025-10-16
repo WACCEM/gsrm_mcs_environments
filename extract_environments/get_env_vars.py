@@ -47,7 +47,69 @@ def parse_pressure_levels(pressure_str):
         return [850, 500, 300]  # Default pressure levels
 
 
-def convert_w_to_omega(ds, pressure_levels):
+def detect_pressure_units(pressure_coord):
+    """
+    Detect whether pressure coordinates are in Pascals or hectopascals.
+    
+    Parameters:
+    -----------
+    pressure_coord : xarray.DataArray
+        Pressure coordinate from dataset
+    
+    Returns:
+    --------
+    str : 'Pa' or 'hPa'
+    
+    Notes:
+    ------
+    Heuristic: If the median pressure value is > 2000, assume Pascals (typical range: 100000-10000 Pa)
+               If the median pressure value is < 2000, assume hectopascals (typical range: 1000-100 hPa)
+    """
+    median_pressure = float(np.median(pressure_coord.values))
+    
+    if median_pressure > 2000:
+        units = 'Pa'
+        print(f"  Detected pressure units: Pascals (median value: {median_pressure:.1f} Pa)")
+    else:
+        units = 'hPa'
+        print(f"  Detected pressure units: hectopascals (median value: {median_pressure:.1f} hPa)")
+    
+    sys.stdout.flush()
+    return units
+
+
+def normalize_pressure_levels(pressure_levels_hPa, dataset_pressure_coord):
+    """
+    Convert user-specified pressure levels (always in hPa) to match dataset units.
+    
+    Parameters:
+    -----------
+    pressure_levels_hPa : list
+        Pressure levels specified by user in hPa (e.g., [850, 500, 300])
+    dataset_pressure_coord : xarray.DataArray
+        Pressure coordinate from the dataset
+    
+    Returns:
+    --------
+    list : Pressure levels in dataset units
+    str : Units detected ('Pa' or 'hPa')
+    """
+    units = detect_pressure_units(dataset_pressure_coord)
+    
+    if units == 'Pa':
+        # Convert from hPa to Pa
+        pressure_levels_dataset = [p * 100 for p in pressure_levels_hPa]
+        print(f"  Converting pressure levels from hPa to Pa: {pressure_levels_hPa} hPa → {pressure_levels_dataset} Pa")
+    else:
+        # Already in hPa
+        pressure_levels_dataset = pressure_levels_hPa
+        print(f"  Pressure levels: {pressure_levels_hPa} hPa (no conversion needed)")
+    
+    sys.stdout.flush()
+    return pressure_levels_dataset, units
+
+
+def convert_w_to_omega(ds, pressure_levels_hPa):
     """
     Convert vertical velocity (w) to pressure velocity (omega) using ω = -ρgw
     
@@ -55,15 +117,15 @@ def convert_w_to_omega(ds, pressure_levels):
     -----------
     ds : xarray.Dataset
         Dataset containing 'wa' (vertical velocity) and 'ta' (temperature)
-    pressure_levels : list
-        List of pressure levels in hPa
+    pressure_levels_hPa : list
+        List of pressure levels in hPa (will be converted to dataset units automatically)
     
     Returns:
     --------
-    xarray.Dataset
-        Dataset with added 'omega' variable (pressure velocity in Pa/s)
+    xarray.DataArray
+        Omega variable (pressure velocity in Pa/s)
     """
-    print("Converting vertical velocity (wa) to pressure velocity (omega)...")
+    print("🌬️ Converting vertical velocity (wa) to pressure velocity (omega)...")
     sys.stdout.flush()
     
     # Physical constants
@@ -74,23 +136,34 @@ def convert_w_to_omega(ds, pressure_levels):
     w = ds['wa']  # vertical velocity (m/s)
     T = ds['ta']  # temperature (K)
     
+    # Normalize pressure levels to dataset units
+    pressure_levels_dataset, pressure_units = normalize_pressure_levels(
+        pressure_levels_hPa, w.pressure
+    )
+    
     # Create omega variable for each pressure level
     omega_levels = []
     
-    for pressure_hPa in pressure_levels:
-        pressure_Pa = pressure_hPa * 100  # Convert hPa to Pa
+    for i, pressure_hPa in enumerate(pressure_levels_hPa):
+        pressure_dataset_units = pressure_levels_dataset[i]
         
-        # Select data at this pressure level
-        w_level = w.sel(pressure=pressure_hPa, method='nearest')
-        T_level = T.sel(pressure=pressure_hPa, method='nearest')
+        # Select data at this pressure level (using dataset units)
+        w_level = w.sel(pressure=pressure_dataset_units, method='nearest')
+        T_level = T.sel(pressure=pressure_dataset_units, method='nearest')
         
         # Calculate air density: ρ = P / (R * T)
+        # Always use pressure in Pascals for the physics calculation
+        if pressure_units == 'hPa':
+            pressure_Pa = pressure_hPa * 100
+        else:
+            pressure_Pa = pressure_dataset_units
+        
         density = pressure_Pa / (R * T_level)
         
         # Calculate omega: ω = -ρ * g * w
         omega_level = -density * g * w_level
         
-        # Add pressure coordinate
+        # Add pressure coordinate (use original hPa value for consistency)
         omega_level = omega_level.expand_dims(pressure=[pressure_hPa])
         omega_levels.append(omega_level)
     
@@ -102,10 +175,12 @@ def convert_w_to_omega(ds, pressure_levels):
         'long_name': 'Pressure velocity (omega)',
         'units': 'Pa/s',
         'description': 'Pressure velocity calculated from vertical velocity using ω = -ρgw',
-        'formula': 'omega = -density * 9.81 * vertical_velocity'
+        'formula': 'omega = -density * 9.81 * vertical_velocity',
+        'pressure_levels_hPa': str(pressure_levels_hPa),
+        'source_pressure_units': pressure_units
     }
     
-    print(f"Omega conversion complete. Pressure levels: {pressure_levels}")
+    print(f"✅ Omega conversion complete. Pressure levels: {pressure_levels_hPa} hPa")
     sys.stdout.flush()
     
     # Return only the omega variable, not the entire dataset
@@ -353,7 +428,7 @@ def extract_variable_statistics_batched(all_areas, variable_data, track_times_ma
 
 
 def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadata, 
-                           hours_before=24, time_freq='3H'):
+                           hours_before=24, model_freq='3H'):
     """
     Add pre-convective data (24 hours before track initiation) to the statistics.
     
@@ -372,7 +447,7 @@ def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadat
         Metadata with track_id, time_idx, base_time
     hours_before : int
         Hours before initiation to extract (default 24)
-    time_freq : str
+    model_freq : str
         Time frequency of data (e.g., '3H' for 3-hourly)
     
     Returns:
@@ -412,8 +487,8 @@ def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadat
         # Get all time steps in the pre-convective period
         preconv_times = pd.date_range(
             start=preconv_start, 
-            end=start_time - pd.Timedelta(time_freq),  # Don't include start_time itself
-            freq=time_freq
+            end=start_time - pd.Timedelta(model_freq),  # Don't include start_time itself
+            freq=model_freq
         )
         
         for preconv_time in preconv_times:
@@ -684,6 +759,10 @@ def main():
     parser.add_argument('--convert_wa_to_omega', action='store_true',
                         help='Convert vertical velocity (wa) to pressure velocity (omega)')
     
+    # Model time frequency
+    parser.add_argument('--model_time_freq', default=None,
+                        help='Model output time frequency (e.g., "1H", "3H", "6H") - used to subsample track time steps')
+    
     args = parser.parse_args()
     
     # Determine date ranges to process
@@ -701,6 +780,58 @@ def main():
     else:
         # No date filtering
         date_ranges = [(None, None)]
+    
+    # Define subsampling function
+    def subsample_tracks_by_frequency(df, model_freq):
+        """
+        Subsample track time steps to match model output frequency.
+        
+        Parameters:
+        -----------
+        df : pandas.DataFrame
+            Track dataframe with 'tracks', 'times', and 'base_time' columns
+        model_freq : str
+            Model output frequency (e.g., '1H', '3H', '6H')
+        
+        Returns:
+        --------
+        pandas.DataFrame
+            Filtered dataframe with only time steps aligned to model frequency
+        """
+        import pandas as pd
+        
+        print(f"Subsampling tracks to model frequency: {model_freq}")
+        original_count = len(df)
+        
+        # Convert frequency string to timedelta
+        freq_td = pd.Timedelta(model_freq)
+        
+        # Group by track and filter
+        filtered_rows = []
+        for track_id, track_group in df.groupby('tracks'):
+            # Sort by time
+            track_group = track_group.sort_values('times')
+            
+            # Get base times
+            base_times = pd.to_datetime(track_group['base_time'].values)
+            
+            # Find the first timestamp for this track
+            first_time = base_times.min()
+            
+            # Create mask for times that align with model frequency
+            time_diffs = base_times - first_time
+            # Keep times where the difference is a multiple of model frequency
+            aligned_mask = (time_diffs % freq_td) == pd.Timedelta(0)
+            
+            filtered_rows.append(track_group[aligned_mask])
+        
+        result_df = pd.concat(filtered_rows, ignore_index=True)
+        new_count = len(result_df)
+        reduction = (1 - new_count/original_count) * 100
+        
+        print(f"Subsampled from {original_count} to {new_count} time points ({reduction:.1f}% reduction)")
+        
+        return result_df
     
     # Start timing
     total_start_time = time.time()
@@ -910,11 +1041,19 @@ def main():
                         # Pressure suffix will be set per level in the loop below
                     else:
                         print(f"3D variable detected with pressure dimension")
-                        print(f"Will average across pressure levels: {pressure_levels}")
-                        # Select and average specified pressure levels
-                        variable_data = variable_data.sel(pressure=pressure_levels, method='nearest').mean(dim='pressure')
+                        print(f"Requested pressure levels: {pressure_levels} hPa")
                         
-                        # Set pressure suffix for averaged data
+                        # Normalize pressure levels to match dataset units
+                        pressure_levels_dataset, pressure_units = normalize_pressure_levels(
+                            pressure_levels, variable_data.pressure
+                        )
+                        
+                        # Select and average specified pressure levels (using dataset units)
+                        variable_data = variable_data.sel(
+                            pressure=pressure_levels_dataset, method='nearest'
+                        ).mean(dim='pressure')
+                        
+                        # Set pressure suffix for averaged data (always use hPa for filename)
                         if len(pressure_levels) == 1:
                             pressure_suffix = f"_{int(pressure_levels[0])}hPa"
                         else:
@@ -977,6 +1116,13 @@ def main():
                 print(f"WARNING: No tracks in date range {start_date_str} to {end_date_str}, skipping")
                 continue
             
+            # Subsample tracks to model frequency if specified
+            if args.model_time_freq and args.model_time_freq not in ['1H', '1h']:
+                filtered_df = subsample_tracks_by_frequency(filtered_df, args.model_time_freq)
+                if len(filtered_df) == 0:
+                    print(f"WARNING: No tracks remain after subsampling, skipping")
+                    continue
+            
             sys.stdout.flush()
             
             # Calculate circular areas for this date range
@@ -1030,7 +1176,8 @@ def main():
                     preconv_areas, 
                     variable_data,
                     track_metadata,
-                    hours_before=args.hours_before_init
+                    hours_before=args.hours_before_init,
+                    model_freq=args.model_time_freq
                 )
             else:
                 # If no pre-convective data, still need to add time_offset_hours

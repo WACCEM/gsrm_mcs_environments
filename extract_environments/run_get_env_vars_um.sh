@@ -29,7 +29,7 @@ mkdir -p $OUTPUT_DIR
 CATALOG_URL="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"
 CURRENT_LOCATION="online" # 
 CATALOG_MODEL="um_glm_n2560_RAL3p3" #
-CATALOG_PARAMS='{"zoom": 8}'  # For 3D UM data, use: '{"zoom": 8, "time": "PT3H"}'
+CATALOG_PARAMS='{"zoom": 8, "time": "PT3H"}'  # For 3D UM data, use: '{"zoom": 8, "time": "PT3H"}'
 
 # Set spatial bounds
 MIN_LAT="-30"
@@ -48,14 +48,15 @@ LON_VAR="meanlon"
 LAND_THRESHOLD=""  # Leave empty to process all tracks, or set value like "0.1" for ocean only
 HOURS_BEFORE_INIT="24"  # Extract 24 hours before track initiation
 BATCH_SIZE="500"
+MODEL_TIME_FREQ="3H"  # Model output frequency (1H, 3H, 6H, etc.) - UM is 3-hourly
 
 # 3D variable options (for pressure level data)
-PRESSURE_LEVELS=""  # For 3D variables, specify levels: "850,500,300"
+PRESSURE_LEVELS=("500") # For 3D variables, specify levels: "850,500,300"
 CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 
 # Set variables to extract
-VARIABLES=( "hflsd")  # Add more as needed: "tas" "hflsd" "clt" "huss"
-# VARIABLES=("hur") # "wa" 
+# VARIABLES=( "hflsd")  # Add more as needed: "tas" "hflsd" "clt" "huss"
+VARIABLES=("hur") # "wa" 
 
 # ===== EXAMPLE: Extract omega at 850 hPa from UM =====
 # Uncomment these lines to extract omega at 850 hPa:
@@ -116,6 +117,9 @@ if [ -n "$PRESSURE_LEVELS" ]; then
 fi
 if [ -n "$CONVERT_WA_TO_OMEGA" ]; then
     OPTIONAL_PARAMS="$OPTIONAL_PARAMS $CONVERT_WA_TO_OMEGA"
+fi
+if [ -n "$MODEL_TIME_FREQ" ]; then
+    OPTIONAL_PARAMS="$OPTIONAL_PARAMS --model_time_freq $MODEL_TIME_FREQ"
 fi
 
 if [ -n "$LAND_FRACTION_FILE" ] && [ -n "$LAND_THRESHOLD" ]; then

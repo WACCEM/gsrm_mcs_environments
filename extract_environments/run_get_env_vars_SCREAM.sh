@@ -47,6 +47,7 @@ LON_VAR="meanlon"
 LAND_THRESHOLD=""  # Leave empty to process all tracks, or set value like "0.1" for ocean only
 HOURS_BEFORE_INIT="24"  # Extract 24 hours before track initiation
 BATCH_SIZE="500"
+MODEL_TIME_FREQ="3H"  # Model output frequency (1H, 3H, 6H, etc.) - SCREAM is 3-hourly
 
 # Pre-computed variable options (leave empty if not using pre-computed data)
 PRECOMPUTED_DIR=""  # Directory with pre-computed files, e.g. /pscratch/sd/p/paccini/temp/hackathon/prw/${CATALOG_MODEL}_PT3H
@@ -98,6 +99,9 @@ OPTIONAL_PARAMS=""
 if [ -n "$PRECOMPUTED_DIR" ]; then
     OPTIONAL_PARAMS="$OPTIONAL_PARAMS --precomputed_dir $PRECOMPUTED_DIR --time_res $TIME_RES"
     echo "Using pre-computed data from: $PRECOMPUTED_DIR"
+fi
+if [ -n "$MODEL_TIME_FREQ" ]; then
+    OPTIONAL_PARAMS="$OPTIONAL_PARAMS --model_time_freq $MODEL_TIME_FREQ"
 fi
 
 # Run the command with srun - pass ALL variables and date ranges to Python at once
