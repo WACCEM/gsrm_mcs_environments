@@ -2,7 +2,7 @@
 #SBATCH -N 1
 #SBATCH -C cpu
 #SBATCH -q debug
-#SBATCH -t 00:15:00
+#SBATCH -t 00:30:00
 #SBATCH -J extract_icon
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -29,7 +29,7 @@ mkdir -p $OUTPUT_DIR
 CATALOG_URL="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"
 CURRENT_LOCATION="NERSC" 
 CATALOG_MODEL="icon_d3hp003" 
-CATALOG_PARAMS='{"zoom": 8, time="PT6H",time_method='inst'}'  # For 3D ICON data, use: '{"zoom": 8, time="PT6H",time_method='inst'}'
+CATALOG_PARAMS='{"zoom": 8 }'  # For 3D ICON data, use: '{"zoom": 8, time="PT6H",time_method='inst'}'
 
 # Set spatial bounds
 MIN_LAT="-30"
@@ -48,15 +48,15 @@ LON_VAR="meanlon"
 LAND_THRESHOLD=""  # Leave empty to process all tracks, or set value like "0.1" for ocean only
 HOURS_BEFORE_INIT="24"  # Extract 24 hours before track initiation
 BATCH_SIZE="500"
-MODEL_TIME_FREQ="6H"  # Model output frequency (1H, 3H, 6H, etc.) - ICON is 6-hourly for 3D
+MODEL_TIME_FREQ="3H"  # Model output frequency (1H, 3H, 6H, etc.) - ICON is 6-hourly for 3D
 
 # 3D variable options (for pressure level data)
-PRESSURE_LEVELS=("500")  # For 3D variables, specify levels: "850,500,300"
-CONVERT_WA_TO_OMEGA="--convert_wa_to_omega"  # Set to "--convert_wa_to_omega" to convert wa to omega
+PRESSURE_LEVELS=("")  # For 3D variables, specify levels: "850,500,300"
+CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 
 # Set variables to extract
-# VARIABLES=( "prw" "tas")  # Add more as needed: "tas" "hflsd" "clt" "huss"
-VARIABLES=("wa") #"wa, hur
+VARIABLES=( "huss" "ps")  # Add more as needed: "tas" "hflsd" "clt"  "prw"
+# VARIABLES=("wa") #"wa, hur
 # ===== EXAMPLE: Extract omega at 850 hPa from ICON =====
 # Uncomment these lines to extract omega at 850 hPa:
 # CATALOG_MODEL="icon_d3hp003"

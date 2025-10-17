@@ -2,7 +2,7 @@
 #SBATCH -N 1
 #SBATCH -C cpu
 #SBATCH -q debug
-#SBATCH -t 00:10:00
+#SBATCH -t 00:30:00
 #SBATCH -J extract_scream
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -27,7 +27,7 @@ mkdir -p $OUTPUT_DIR
 # Model and catalog settings
 CATALOG_URL="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"
 CURRENT_LOCATION="NERSC"
-CATALOG_MODEL="scream_ne120" #"scream_ne120_inst" for instantaneous variables
+CATALOG_MODEL="scream_ne120_inst" #"scream_ne120_inst" for instantaneous variables
 CATALOG_PARAMS='{"zoom": 8}'
 
 # Set spatial bounds
@@ -54,8 +54,8 @@ PRECOMPUTED_DIR=""  # Directory with pre-computed files, e.g. /pscratch/sd/p/pac
 TIME_RES=""  # Time resolution of pre-computed files, e.g. "PT3H"
 
 # Set variables to extract
-VARIABLES=( "tas")  # Add more as needed: "tas" "hflsd" "clt" "huss"
-# VARIABLES=("prw") #"omega500" "omega850" "rh850" "rh500" 
+# VARIABLES=( "tas")  # Add more as needed: "tas" "hflsd" "clt" "huss"
+VARIABLES=("rh500") #"omega500" "omega850" "rh850" "rh500" 
 
 # NOTE: When using pre-computed variables (PRECOMPUTED_DIR is set):
 # - The script will load data from files like: scream_ne120_prw_hp8_PT3H.202003.nc
@@ -63,17 +63,17 @@ VARIABLES=( "tas")  # Add more as needed: "tas" "hflsd" "clt" "huss"
 # - The catalog will NOT be accessed for this variable 
 # Define monthly date ranges for processing
 DATE_RANGES=(
-  # "2019-08-01 2019-08-31"
-  # "2019-09-01 2019-09-30"
-  # "2019-10-01 2019-10-31"
-  # "2019-11-01 2019-11-30"
-  # "2019-12-01 2019-12-31"
-  # "2020-01-01 2020-01-31"
-  # "2020-02-01 2020-02-29"
-  # "2020-03-01 2020-03-31"
-  # "2020-04-01 2020-04-30"
-  # "2020-05-01 2020-05-31"
-  # "2020-06-01 2020-06-30"
+  "2019-08-01 2019-08-31"
+  "2019-09-01 2019-09-30"
+  "2019-10-01 2019-10-31"
+  "2019-11-01 2019-11-30"
+  "2019-12-01 2019-12-31"
+  "2020-01-01 2020-01-31"
+  "2020-02-01 2020-02-29"
+  "2020-03-01 2020-03-31"
+  "2020-04-01 2020-04-30"
+  "2020-05-01 2020-05-31"
+  "2020-06-01 2020-06-30"
   "2020-07-01 2020-07-31"
   "2020-08-01 2020-08-31"
 )
