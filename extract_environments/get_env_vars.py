@@ -344,7 +344,7 @@ def extract_variable_statistics_batched(all_areas, variable_data, track_times_ma
         print(f"ERROR: Failed to load variable data: {e}")
         return pd.DataFrame()
     
-    # CRITICAL FIX: Create mapping from requested time to actual selected time
+    # Create mapping from requested time to actual selected time
     # The 'method=nearest' above may have selected different times than requested
     actual_times = var_subset.time.values
     time_mapping = {}
@@ -467,7 +467,7 @@ def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadat
     # Get first time for each track
     first_times = track_metadata.groupby('track_id').first().reset_index()
     
-    # CRITICAL OPTIMIZATION: Collect all pre-convective times and pixels FIRST
+    # OPTIMIZATION: Collect all pre-convective times and pixels FIRST
     # Then load ALL data at once (like the debug script proved is fastest)
     print(f"Collecting all pre-convective times and pixels for {len(first_times)} tracks...")
     sys.stdout.flush()
@@ -524,15 +524,32 @@ def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadat
             time_mapping[requested_time] = actual_preconv_times[i]
     
     # Now extract statistics using the pre-loaded data
-    print(f"Extracting pre-convective statistics...")
+    print(f"Extracting pre-convective statistics for {len(first_times)} tracks...")
     sys.stdout.flush()
     
     preconv_results = []
+    total_tracks = len(first_times)
     
-    for _, track_info in first_times.iterrows():
-        track_id = int(track_info['track_id'])
-        start_time = pd.Timestamp(track_info['base_time'])
-        first_time_idx = int(track_info['time_idx'])
+    # Build a more efficient lookup structure for pre-convective times
+    # Group by track_id for faster access
+    track_preconv_times = {}
+    for (track_id, preconv_time), start_time in preconv_times_map.items():
+        if track_id not in track_preconv_times:
+            track_preconv_times[track_id] = []
+        track_preconv_times[track_id].append((preconv_time, start_time))
+    
+    for track_idx, track_info in enumerate(first_times.itertuples()):
+        # Progress reporting every 10000 tracks
+        if track_idx > 0 and track_idx % 10000 == 0:
+            print(f"  Processed {track_idx}/{total_tracks} tracks, extracted {len(preconv_results)} data points.")
+            sys.stdout.flush()
+        
+        track_id = int(track_info.track_id)
+        first_time_idx = int(track_info.time_idx)
+        
+        # Skip if no pre-convective times for this track
+        if track_id not in track_preconv_times:
+            continue
         
         # Process each radius
         for radius in stats_df['radius'].unique():
@@ -543,10 +560,10 @@ def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadat
             
             pixels = preconv_areas[area_key]
             
-            # Get pre-convective times for this track
-            track_preconv_times = [pt for (tid, pt), _ in preconv_times_map.items() if tid == track_id]
+            # Get pre-convective times for this track (already filtered)
+            times_for_track = track_preconv_times[track_id]
             
-            for preconv_time in track_preconv_times:
+            for preconv_time, start_time in times_for_track:
                 if preconv_time not in time_mapping:
                     continue
                 
@@ -582,6 +599,9 @@ def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadat
                     
                 except Exception:
                     continue
+    
+    print(f"  Completed processing all {total_tracks} tracks")
+    sys.stdout.flush()
     
     # Combine with main statistics
     preconv_df = pd.DataFrame(preconv_results)
@@ -798,7 +818,7 @@ def main():
         pandas.DataFrame
             Filtered dataframe with only time steps aligned to model frequency
         """
-        import pandas as pd
+        # import pandas as pd
         
         print(f"Subsampling tracks to model frequency: {model_freq}")
         original_count = len(df)
@@ -883,6 +903,46 @@ def main():
         egh.attach_coords, signed_lon=True
     )
     ds = ds.assign_coords(time=convert_time(ds.time.values))
+    
+    # ===== FIX FOR IFS MODEL: Rename dimensions and variables =====
+    # IFS has both 'value' and 'cell' dimensions, but variables use 'value'
+    # Also, IFS uses 'level' instead of 'pressure' for vertical coordinate
+    if 'value' in ds.dims and 'cell' in ds.dims:
+        print("Detected IFS model: Applying dimension and variable name fixes...")
+        sys.stdout.flush()
+        
+        # 1. Swap 'value' dimension to 'cell'
+        ds = ds.rename({'value': 'cell_new', 'cell': 'cell_old'})
+        ds = ds.rename({'cell_new': 'cell'})
+        if 'cell_old' in ds.coords:
+            ds = ds.drop_vars('cell_old')
+        print(" Swapped 'value' → 'cell' dimension")
+        
+        # 2. Rename 'level' to 'pressure' if it exists
+        if 'level' in ds.dims:
+            ds = ds.rename({'level': 'pressure'})
+            print("Renamed 'level' → 'pressure' dimension")
+        
+        # 3. Rename IFS variable names to standard names (only if they exist)
+        var_name_mapping = {
+            't': 'ta',      # temperature
+            'w': 'wa',      # vertical velocity
+            'q': 'huss',    # specific humidity
+            'r': 'hur',     # relative humidity
+            '2t': 'tas'     # 2m temperature
+        }
+        
+        vars_to_rename = {}
+        for old_name, new_name in var_name_mapping.items():
+            if old_name in ds.data_vars or old_name in ds.coords:
+                vars_to_rename[old_name] = new_name
+        
+        if vars_to_rename:
+            ds = ds.rename(vars_to_rename)
+            print(f"Renamed variables: {vars_to_rename}")
+        
+        print("IFS model fixes complete")
+        sys.stdout.flush()
     
     # Get HEALPix grid
     print("Computing HEALPix grid...")

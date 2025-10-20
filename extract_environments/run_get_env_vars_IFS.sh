@@ -3,25 +3,22 @@
 #SBATCH -C cpu
 #SBATCH -q debug
 #SBATCH -t 00:30:00
-#SBATCH -J extract_scream
+#SBATCH -J extract_IFS  
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
 #SBATCH --mail-type=FAIL,END
 
-# NOTE: For processing full year (recommended), 30 min should be sufficient
-# If processing takes longer, switch to regular queue: -q regular -t 01:00:00
-
 module load python
-module list
 conda activate /global/common/software/m1867/python/lp_env/easy
 
 # Set up paths and parameters
 ROOT_DIR="/global/cfs/cdirs/m4581/gsharing/hackathon"
-TRACK_FILE="${ROOT_DIR}/tracking/mcs/scream/stats/mcs_tracks_final_20190801.0000_20200901.0000.nc"
-OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/SCREAM"
+TRACK_FILE="/pscratch/sd/p/paccini/IFS_mcs_hackathon/ifs_tco3999_rcbmf/stats/mcs_tracks_final_20200101.0000_20210228.2330.nc" #IFS
+OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/IFS_all"
 
 # PRECOMPUTED LAND FRACTION DATA (from get_land_fractions.py output)
-LAND_FRACTION_FILE="" #/pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/mcs_land_fractions_scream_ne120_zoom8_summary.parquet"
+LAND_FRACTION_FILE=""
+
 
 # Create output directory if it doesn't exist
 mkdir -p $OUTPUT_DIR
@@ -29,13 +26,13 @@ mkdir -p $OUTPUT_DIR
 # ===== PARAMETERS TO CUSTOMIZE =====
 # Model and catalog settings
 CATALOG_URL="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"
-CURRENT_LOCATION="NERSC"
-CATALOG_MODEL="scream_ne120_inst" #"scream_ne120_inst" for instantaneous variables
-CATALOG_PARAMS='{"zoom": 8}'
+CURRENT_LOCATION="online" # 
+CATALOG_MODEL="ifs_tco3999_rcbmf" #
+CATALOG_PARAMS='{"zoom": 7}'  # For 3D UM data, use: '{"zoom": 8, "time": "PT3H"}'
 
 # Set spatial bounds
-MIN_LAT="-30"
-MAX_LAT="30"
+MIN_LAT="-90"
+MAX_LAT="90"
 MIN_LON="-180"
 MAX_LON="180"
 
@@ -50,44 +47,36 @@ LON_VAR="meanlon"
 LAND_THRESHOLD=""  # Leave empty to process all tracks, or set value like "0.1" for ocean only
 HOURS_BEFORE_INIT="24"  # Extract 24 hours before track initiation
 BATCH_SIZE="500"
-MODEL_TIME_FREQ="3H"  # Model output frequency (1H, 3H, 6H, etc.) - SCREAM is 3-hourly
+MODEL_TIME_FREQ="3H"  # Model output frequency (1H, 3H, 6H, etc.) - UM is 3-hourly
 
-# Pre-computed variable options (leave empty if not using pre-computed data)
-PRECOMPUTED_DIR=""  # Directory with pre-computed files, e.g. /pscratch/sd/p/paccini/temp/hackathon/prw/${CATALOG_MODEL}_PT3H
-TIME_RES=""  # Time resolution of pre-computed files, e.g. "PT3H"
+# 3D variable options (for pressure level data)
+PRESSURE_LEVELS=("850") # For 3D variables, specify levels: "850,500,300"
+CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 
 # Set variables to extract
-# VARIABLES=( "prw")  # Add more as needed: "tas" "hflsd" "clt" "huss"
-VARIABLES=("omega850") #"omega500" "omega850" "rh850" "rh500" 
+VARIABLES=( "wa")  # Add more as needed: "tas" "hflsd" "clt" "huss"
+# VARIABLES=("") # "wa" "hur"
 
-# NOTE: When using pre-computed variables (PRECOMPUTED_DIR is set):
-# - The script will load data from files like: scream_ne120_prw_hp8_PT3H.202003.nc
-# - Expected filename pattern: {model}_{variable}_hp{zoom}_{timeRes}.{YYYYMM}.nc
-# - The catalog will NOT be accessed for this variable 
+# ===== EXAMPLE: Extract omega at 850 hPa from UM =====
+# Uncomment these lines to extract omega at 850 hPa:
+# CATALOG_MODEL="ifs_tco3999_rcbmf"
+# CATALOG_PARAMS='{"zoom": 7, "time": "PT3H"}'  # Required for 3D data
+# VARIABLES=("wa")  # Process vertical velocity
+# PRESSURE_LEVELS="850"  # Extract at 850 hPa
+# CONVERT_WA_TO_OMEGA="--convert_wa_to_omega"  # Convert wa to omega
+# Output will be saved as: omega_stats_*.parquet
 
-# Define date range for processing
-# OPTION 1: Process entire year at once (RECOMMENDED - avoids duplicate tracks at month boundaries)
-DATE_RANGES=(
-  "2019-08-01 2020-09-02"
+# ===== EXAMPLE: Extract multiple 3D variables at multiple levels =====
+# CATALOG_MODEL="um_glm_n2560_RAL3p3"
+# CATALOG_PARAMS='{"zoom": 8, "time": "PT3H"}'
+# VARIABLES=("wa" "hus" "ta")
+# PRESSURE_LEVELS="850,500,300"  # Extract at these three levels
+# CONVERT_WA_TO_OMEGA="--convert_wa_to_omega"  # Only affects 'wa'
+
+# Define monthly date ranges for processing
+DATE_RANGES=( 
+  "2020-01-01 2021-03-01"
 )
-
-# OPTION 2: Process by month (only if memory constraints or need to restart failed months)
-# DATE_RANGES=(
-#   "2019-08-01 2019-08-31T23:00:00"
-#   "2019-09-01 2019-09-30T23:00:00"
-#   "2019-10-01 2019-10-31T23:00:00"
-#   "2019-11-01 2019-11-30T23:00:00"
-#   "2019-12-01 2019-12-31T23:00:00"
-#   "2020-01-01 2020-01-31T23:00:00"
-#   "2020-02-01 2020-02-29T23:00:00"
-#   "2020-03-01 2020-03-31T23:00:00"
-#   "2020-04-01 2020-04-30T23:00:00"
-#   "2020-05-01 2020-05-31T23:00:00"
-#   "2020-06-01 2020-06-30T23:00:00"
-#   "2020-07-01 2020-07-31T23:00:00"
-#   "2020-08-01 2020-08-31T23:00:00"
-#   "2020-08-01 2020-09-01"
-# )
 
 # Check if land fraction file exists
 if [ ! -f "$LAND_FRACTION_FILE" ]; then
@@ -105,17 +94,19 @@ echo "================================================"
 echo "Processing all variables: ${VARIABLES[@]}"
 echo "================================================"
 
-# Build optional pre-computed parameters
+# Run the command with srun - pass ALL variables and date ranges to Python at once
+# Build optional 3D parameters
 OPTIONAL_PARAMS=""
-if [ -n "$PRECOMPUTED_DIR" ]; then
-    OPTIONAL_PARAMS="$OPTIONAL_PARAMS --precomputed_dir $PRECOMPUTED_DIR --time_res $TIME_RES"
-    echo "Using pre-computed data from: $PRECOMPUTED_DIR"
+if [ -n "$PRESSURE_LEVELS" ]; then
+    OPTIONAL_PARAMS="$OPTIONAL_PARAMS --pressure_levels $PRESSURE_LEVELS"
+fi
+if [ -n "$CONVERT_WA_TO_OMEGA" ]; then
+    OPTIONAL_PARAMS="$OPTIONAL_PARAMS $CONVERT_WA_TO_OMEGA"
 fi
 if [ -n "$MODEL_TIME_FREQ" ]; then
     OPTIONAL_PARAMS="$OPTIONAL_PARAMS --model_time_freq $MODEL_TIME_FREQ"
 fi
 
-# Run the command with srun - pass ALL variables and date ranges to Python at once
 if [ -n "$LAND_FRACTION_FILE" ] && [ -n "$LAND_THRESHOLD" ]; then
     srun -n 1 -c 32 --cpu_bind=cores python get_env_vars.py \
       --catalog_url "$CATALOG_URL" \
