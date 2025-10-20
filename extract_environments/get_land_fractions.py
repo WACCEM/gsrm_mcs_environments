@@ -121,12 +121,14 @@ def extract_land_fractions_batched(all_areas, land_fraction_data, batch_size=500
             # Extract land fraction for this area 
             try:
                 area_fraction_values = lf_data.sel(cell=pixels).values
-                valid_fractions = area_fraction_values[~np.isnan(area_fraction_values)]
+
+                area_fraction_values = np.where(np.isnan(area_fraction_values), 0.0, area_fraction_values)
+                # valid_fractions = area_fraction_values[~np.isnan(area_fraction_values)]
                 
-                if len(valid_fractions) == 0:
+                if len(area_fraction_values) == 0:
                     continue
                 
-                mean_lf = float(np.mean(valid_fractions))
+                mean_lf = float(np.mean(area_fraction_values))
                 
                 # Store minimal result 
                 result = {
@@ -134,7 +136,7 @@ def extract_land_fractions_batched(all_areas, land_fraction_data, batch_size=500
                     'time_idx': int(time_idx),
                     'radius': radius,
                     'mean_land_fraction': mean_lf,
-                    'num_pixels': len(valid_fractions),
+                    'num_pixels': len(area_fraction_values),
                 }
                 
                 results.append(result)
