@@ -125,7 +125,7 @@ def convert_w_to_omega(ds, pressure_levels_hPa):
     xarray.DataArray
         Omega variable (pressure velocity in Pa/s)
     """
-    print("🌬️ Converting vertical velocity (wa) to pressure velocity (omega)...")
+    print("Converting vertical velocity (wa) to pressure velocity (omega)...")
     sys.stdout.flush()
     
     # Physical constants
@@ -180,11 +180,92 @@ def convert_w_to_omega(ds, pressure_levels_hPa):
         'source_pressure_units': pressure_units
     }
     
-    print(f"✅ Omega conversion complete. Pressure levels: {pressure_levels_hPa} hPa")
+    print(f"Omega conversion complete. Pressure levels: {pressure_levels_hPa} hPa")
     sys.stdout.flush()
     
     # Return only the omega variable, not the entire dataset
     return omega_combined
+
+
+def convert_omega_to_w(ds, pressure_levels_hPa):
+    """
+    Convert pressure velocity (omega) to vertical velocity (w) using w = -ω/(ρg)
+    
+    This is the inverse of the wa-to-omega conversion. Useful when models provide
+    omega but you need vertical velocity.
+    
+    Parameters:
+    -----------
+    ds : xarray.Dataset
+        Dataset containing 'omega' (pressure velocity) and 'ta' (temperature)
+    pressure_levels_hPa : list
+        List of pressure levels in hPa (will be converted to dataset units automatically)
+    
+    Returns:
+    --------
+    xarray.DataArray
+        Vertical velocity variable (m/s)
+    """
+    print("Converting pressure velocity (omega) to vertical velocity (wa)...")
+    sys.stdout.flush()
+    
+    # Physical constants
+    g = 9.81  # gravitational acceleration (m/s²)
+    R = 287.04  # specific gas constant for dry air (J/(kg·K))
+    
+    # Get variables
+    omega = ds['omega']  # pressure velocity (Pa/s)
+    T = ds['ta']  # temperature (K)
+    
+    # Normalize pressure levels to dataset units
+    pressure_levels_dataset, pressure_units = normalize_pressure_levels(
+        pressure_levels_hPa, omega.pressure
+    )
+    
+    # Create wa variable for each pressure level
+    wa_levels = []
+    
+    for i, pressure_hPa in enumerate(pressure_levels_hPa):
+        pressure_dataset_units = pressure_levels_dataset[i]
+        
+        # Select data at this pressure level (using dataset units)
+        omega_level = omega.sel(pressure=pressure_dataset_units, method='nearest')
+        T_level = T.sel(pressure=pressure_dataset_units, method='nearest')
+        
+        # Calculate air density: ρ = P / (R * T)
+        # Always use pressure in Pascals for the physics calculation
+        if pressure_units == 'hPa':
+            pressure_Pa = pressure_hPa * 100
+        else:
+            pressure_Pa = pressure_dataset_units
+        
+        density = pressure_Pa / (R * T_level)
+        
+        # Calculate wa: w = -ω / (ρ * g)
+        wa_level = -omega_level / (density * g)
+        
+        # Add pressure coordinate (use original hPa value for consistency)
+        wa_level = wa_level.expand_dims(pressure=[pressure_hPa])
+        wa_levels.append(wa_level)
+    
+    # Concatenate all pressure levels
+    wa_combined = xr.concat(wa_levels, dim='pressure')
+    
+    # Add proper attributes
+    wa_combined.attrs = {
+        'long_name': 'Vertical velocity (wa)',
+        'units': 'm/s',
+        'description': 'Vertical velocity calculated from pressure velocity using w = -ω/(ρg)',
+        'formula': 'wa = -omega / (density * 9.81)',
+        'pressure_levels_hPa': str(pressure_levels_hPa),
+        'source_pressure_units': pressure_units
+    }
+    
+    print(f"Vertical velocity conversion complete. Pressure levels: {pressure_levels_hPa} hPa")
+    sys.stdout.flush()
+    
+    # Return only the wa variable, not the entire dataset
+    return wa_combined
 
 
 def load_precomputed_variable(precomputed_dir, variable_name, model_name, zoom_level, 
@@ -294,7 +375,7 @@ def calculate_circular_areas_sequential(mcs_data, hp_grid, radii, progress_freq=
 
 
 def extract_variable_statistics_batched(all_areas, variable_data, track_times_map,
-                                       batch_size=500, variable_name='var'):
+                                       batch_size=500, variable_name='var', time_batch_size=1000):
     """
     Extract variable statistics for all circular areas using batched processing.
     
@@ -310,9 +391,11 @@ def extract_variable_statistics_batched(all_areas, variable_data, track_times_ma
     track_times_map : dict
         Dictionary mapping (track_id, time_idx) -> base_time (actual timestamp)
     batch_size : int
-        Batch size for processing
+        Batch size for processing areas
     variable_name : str
         Name of the variable (for progress messages)
+    time_batch_size : int
+        Number of time steps to load at once (default 500, helps avoid 502 errors for large datasets)
     
     Returns:
     --------
@@ -336,23 +419,66 @@ def extract_variable_statistics_batched(all_areas, variable_data, track_times_ma
     print(f"Loading {variable_name} data for {len(all_pixels)} pixels and {len(unique_times)} time steps...")
     sys.stdout.flush()
     
-    # Load only the needed times (huge speedup!)
-    # Use method='nearest' to handle slight time mismatches
-    try:
-        var_subset = variable_data.sel(cell=all_pixels).sel(time=unique_times, method='nearest').compute()
-    except Exception as e:
-        print(f"ERROR: Failed to load variable data: {e}")
+    # TIME BATCHING: Load times in batches to avoid 502 Bad Gateway errors
+    # This is especially important for IFS with 10,201 hourly timesteps
+    num_time_batches = (len(unique_times) + time_batch_size - 1) // time_batch_size
+    
+    if num_time_batches > 1:
+        print(f"Using time batching: {num_time_batches} batches of up to {time_batch_size} time steps")
+        sys.stdout.flush()
+    
+    # Dictionary to store all loaded data: {time -> data_array}
+    var_subset_dict = {}
+    time_mapping = {}
+    
+    for time_batch_idx in range(num_time_batches):
+        time_start_idx = time_batch_idx * time_batch_size
+        time_end_idx = min((time_batch_idx + 1) * time_batch_size, len(unique_times))
+        time_batch = unique_times[time_start_idx:time_end_idx]
+        
+        if num_time_batches > 1:
+            print(f"  Loading time batch {time_batch_idx + 1}/{num_time_batches}: {len(time_batch)} times...")
+            sys.stdout.flush()
+        
+        # Add retry logic for each time batch (handles intermittent 502 errors)
+        max_retries = 10 #5
+        retry_delay = 10 #5
+        
+        for retry_attempt in range(max_retries):
+            try:
+                # Load this batch of times
+                var_batch = variable_data.sel(cell=all_pixels).sel(time=time_batch, method='nearest').compute()
+                
+                # Store in dictionary by time
+                actual_times_batch = var_batch.time.values
+                for i, requested_time in enumerate(time_batch):
+                    if i < len(actual_times_batch):
+                        actual_time = actual_times_batch[i]
+                        time_mapping[requested_time] = actual_time
+                        # Store the data array for this time
+                        var_subset_dict[actual_time] = var_batch.sel(time=actual_time)
+                
+                # Success - break out of retry loop
+                break
+                
+            except Exception as e:
+                if retry_attempt < max_retries - 1:
+                    print(f"    WARNING: Batch {time_batch_idx + 1} failed (attempt {retry_attempt + 1}/{max_retries}): {e}")
+                    print(f"    Retrying in {retry_delay} seconds...")
+                    sys.stdout.flush()
+                    time.sleep(retry_delay)
+                else:
+                    print(f"    ERROR: Failed to load time batch {time_batch_idx + 1} after {max_retries} attempts: {e}")
+                    sys.stdout.flush()
+                    # Continue to next batch instead of failing completely
+                    continue
+    
+    if len(var_subset_dict) == 0:
+        print(f"ERROR: No variable data loaded successfully")
         return pd.DataFrame()
     
-    # Create mapping from requested time to actual selected time
-    # The 'method=nearest' above may have selected different times than requested
-    actual_times = var_subset.time.values
-    time_mapping = {}
-    for i, requested_time in enumerate(unique_times):
-        if i < len(actual_times):
-            time_mapping[requested_time] = actual_times[i]
-    
-    print(f"Time mapping created: {len(unique_times)} requested → {len(actual_times)} actual times")
+    print(f"Successfully loaded data for {len(var_subset_dict)} time steps")
+    print(f"Time mapping created: {len(unique_times)} requested → {len(var_subset_dict)} actual times")
     sys.stdout.flush()
     
     # Process areas in batches
@@ -388,9 +514,13 @@ def extract_variable_statistics_batched(all_areas, variable_data, track_times_ma
             
             actual_time = time_mapping[track_time]
             
+            # Check if we have data for this time
+            if actual_time not in var_subset_dict:
+                continue
+            
             try:
-                # Extract data for THIS specific time using the actual selected time
-                time_slice = var_subset.sel(cell=pixels, time=actual_time).values
+                # Extract data for THIS specific time using the pre-loaded data
+                time_slice = var_subset_dict[actual_time].sel(cell=pixels).values
                 valid_values = time_slice[~np.isnan(time_slice)]
                 
                 if len(valid_values) == 0:
@@ -428,7 +558,7 @@ def extract_variable_statistics_batched(all_areas, variable_data, track_times_ma
 
 
 def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadata, 
-                           hours_before=24, model_freq='3H'):
+                           hours_before=24, model_freq='3H', time_batch_size=1000):
     """
     Add pre-convective data (24 hours before track initiation) to the statistics.
     
@@ -449,6 +579,8 @@ def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadat
         Hours before initiation to extract (default 24)
     model_freq : str
         Time frequency of data (e.g., '3H' for 3-hourly)
+    time_batch_size : int
+        Number of time steps to load at once (default 500, helps avoid 502 errors for large datasets)
     
     Returns:
     --------
@@ -505,23 +637,65 @@ def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadat
     print(f"Loading pre-convective data: {len(all_preconv_pixels)} pixels × {len(all_preconv_times)} times...")
     sys.stdout.flush()
     
-    # LOAD ALL PRE-CONVECTIVE DATA AT ONCE (this is the key optimization!)
-    try:
-        var_preconv = variable_data.sel(cell=all_preconv_pixels).sel(
-            time=all_preconv_times, method='nearest'
-        ).compute()
-        print(f"Pre-convective data loaded successfully")
+    # TIME BATCHING: Load times in batches to avoid 502 Bad Gateway errors
+    num_time_batches = (len(all_preconv_times) + time_batch_size - 1) // time_batch_size
+    
+    if num_time_batches > 1:
+        print(f"Using time batching: {num_time_batches} batches of up to {time_batch_size} time steps")
         sys.stdout.flush()
-    except Exception as e:
-        print(f"ERROR: Failed to load pre-convective data: {e}")
+    
+    # Dictionary to store all loaded data: {time -> data_array}
+    var_preconv_dict = {}
+    time_mapping = {}
+    
+    for time_batch_idx in range(num_time_batches):
+        time_start_idx = time_batch_idx * time_batch_size
+        time_end_idx = min((time_batch_idx + 1) * time_batch_size, len(all_preconv_times))
+        time_batch = all_preconv_times[time_start_idx:time_end_idx]
+        
+        if num_time_batches > 1:
+            print(f"  Loading pre-convective time batch {time_batch_idx + 1}/{num_time_batches}: {len(time_batch)} times...")
+            sys.stdout.flush()
+        
+        # Add retry logic for each time batch (handles intermittent 502 errors)
+        max_retries = 10 #3
+        retry_delay = 10 #5
+        
+        for retry_attempt in range(max_retries):
+            try:
+                # Load this batch of times
+                var_batch = variable_data.sel(cell=all_preconv_pixels).sel(time=time_batch, method='nearest').compute()
+                
+                # Store in dictionary by time
+                actual_times_batch = var_batch.time.values
+                for i, requested_time in enumerate(time_batch):
+                    if i < len(actual_times_batch):
+                        actual_time = actual_times_batch[i]
+                        time_mapping[requested_time] = actual_time
+                        # Store the data array for this time
+                        var_preconv_dict[actual_time] = var_batch.sel(time=actual_time)
+                
+                # Success - break out of retry loop
+                break
+                
+            except Exception as e:
+                if retry_attempt < max_retries - 1:
+                    print(f"    WARNING: Pre-convective batch {time_batch_idx + 1} failed (attempt {retry_attempt + 1}/{max_retries}): {e}")
+                    print(f"    Retrying in {retry_delay} seconds...")
+                    sys.stdout.flush()
+                    time.sleep(retry_delay)
+                else:
+                    print(f"    ERROR: Failed to load pre-convective time batch {time_batch_idx + 1} after {max_retries} attempts: {e}")
+                    sys.stdout.flush()
+                    # Continue to next batch instead of failing completely
+                    continue
+    
+    if len(var_preconv_dict) == 0:
+        print(f"ERROR: No pre-convective data loaded successfully")
         return stats_df
     
-    # Create time mapping from requested to actual times
-    actual_preconv_times = var_preconv.time.values
-    time_mapping = {}
-    for i, requested_time in enumerate(all_preconv_times):
-        if i < len(actual_preconv_times):
-            time_mapping[requested_time] = actual_preconv_times[i]
+    print(f"Pre-convective data loaded successfully: {len(var_preconv_dict)} time steps")
+    sys.stdout.flush()
     
     # Now extract statistics using the pre-loaded data
     print(f"Extracting pre-convective statistics for {len(first_times)} tracks...")
@@ -569,9 +743,13 @@ def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadat
                 
                 actual_time = time_mapping[preconv_time]
                 
+                # Check if we have data for this time
+                if actual_time not in var_preconv_dict:
+                    continue
+                
                 try:
                     # Extract from pre-loaded data (FAST!)
-                    time_slice = var_preconv.sel(cell=pixels, time=actual_time).values
+                    time_slice = var_preconv_dict[actual_time].sel(cell=pixels).values
                     valid_values = time_slice[~np.isnan(time_slice)]
                     
                     if len(valid_values) == 0:
@@ -648,6 +826,62 @@ def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadat
         final_cols = ['track_id', 'radius', 'data_time', 'time_offset_hours', 
                      'mean', 'median', 'min', 'max', 'std', 'count', 'num_valid']
         return stats_df[final_cols].copy()
+
+
+def align_track_times_to_dataset(df, dataset_times, time_column='base_time'):
+    """
+    Align track timestamps to the nearest dataset times.
+    
+    This is crucial for resampled datasets (e.g., IFS 1H → 3H):
+    - Without alignment: tracks keep original timestamps → 10,199 unique times
+    - With alignment: tracks snap to dataset times → 3,401 unique times
+    - Results in ~3× fewer time batches and ~3× faster extraction
+    
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        Track dataframe with time column
+    dataset_times : array-like
+        Available times in the dataset (e.g., from ds.time.values)
+    time_column : str
+        Name of time column in df (default: 'base_time')
+    
+    Returns:
+    --------
+    pd.DataFrame
+        DataFrame with aligned timestamps
+    """
+    print(f"Aligning track times to dataset times...")
+    print(f"  Dataset has {len(dataset_times)} time steps")
+    sys.stdout.flush()
+    
+    # Convert to pandas datetime for easier manipulation
+    dataset_times_pd = pd.to_datetime(dataset_times)
+    track_times_pd = pd.to_datetime(df[time_column])
+    
+    # For each track time, find nearest dataset time
+    aligned_times = []
+    for track_time in track_times_pd:
+        # Find nearest dataset time
+        time_diffs = np.abs(dataset_times_pd - track_time)
+        nearest_idx = time_diffs.argmin()
+        aligned_times.append(dataset_times_pd[nearest_idx])
+    
+    # Create new dataframe with aligned times
+    df_aligned = df.copy()
+    df_aligned[time_column] = aligned_times
+    
+    # Report statistics
+    original_unique = len(track_times_pd.unique())
+    aligned_unique = len(pd.Series(aligned_times).unique())
+    reduction = (1 - aligned_unique / original_unique) * 100
+    
+    print(f"  Original unique times: {original_unique}")
+    print(f"  Aligned unique times: {aligned_unique}")
+    print(f"  Reduction: {reduction:.1f}%")
+    sys.stdout.flush()
+    
+    return df_aligned
 
 
 def load_land_fraction_summary(land_fraction_file, land_threshold=None):
@@ -778,10 +1012,16 @@ def main():
     # Vertical velocity conversion
     parser.add_argument('--convert_wa_to_omega', action='store_true',
                         help='Convert vertical velocity (wa) to pressure velocity (omega)')
+    parser.add_argument('--convert_omega_to_wa', action='store_true',
+                        help='Convert pressure velocity (omega) to vertical velocity (wa)')
     
     # Model time frequency
     parser.add_argument('--model_time_freq', default=None,
                         help='Model output time frequency (e.g., "1H", "3H", "6H") - used to subsample track time steps')
+    
+    # Time batching parameter (for large datasets like IFS)
+    parser.add_argument('--time_batch_size', type=int, default=1000,
+                        help='Number of time steps to load at once (default 1000). Reduce to 500 for large datasets like IFS to avoid 502 errors')
     
     args = parser.parse_args()
     
@@ -899,10 +1139,37 @@ def main():
     
     print(f"Loading dataset {args.catalog_model}...")
     sys.stdout.flush()
-    ds = cat[args.catalog_model](**catalog_params).to_dask().pipe(
-        egh.attach_coords, signed_lon=True
-    )
-    ds = ds.assign_coords(time=convert_time(ds.time.values))
+    
+    # Add retry logic for dataset opening (handles intermittent 502 errors)
+    max_retries = 10
+    retry_delay = 10  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            ds = cat[args.catalog_model](**catalog_params).to_dask().pipe(
+                egh.attach_coords, signed_lon=True
+            )
+            ds = ds.assign_coords(time=convert_time(ds.time.values))
+            # Resample IMMEDIATELY for IFS
+            if args.catalog_model.startswith('ifs'):
+                print(f"Resampling IFS data from hourly to {args.model_time_freq}...")
+                ds = ds.resample(time=args.model_time_freq).first()
+                print(f"After resampling: {len(ds.time)} time steps")
+
+            print(f"Dataset loaded successfully")
+            sys.stdout.flush()
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"WARNING: Failed to load dataset (attempt {attempt + 1}/{max_retries}): {e}")
+                print(f"Retrying in {retry_delay} seconds...")
+                sys.stdout.flush()
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                print(f"ERROR: Failed to load dataset after {max_retries} attempts: {e}")
+                sys.stdout.flush()
+                raise
     
     # ===== FIX FOR IFS MODEL: Rename dimensions and variables =====
     # IFS has both 'value' and 'cell' dimensions, but variables use 'value'
@@ -912,11 +1179,16 @@ def main():
         sys.stdout.flush()
         
         # 1. Swap 'value' dimension to 'cell'
-        ds = ds.rename({'value': 'cell_new', 'cell': 'cell_old'})
-        ds = ds.rename({'cell_new': 'cell'})
-        if 'cell_old' in ds.coords:
-            ds = ds.drop_vars('cell_old')
-        print(" Swapped 'value' → 'cell' dimension")
+        # IFS has both 'value' (no coordinate) and 'cell' (with coordinate) dimensions
+        # Variables are indexed by 'value', but we need them indexed by 'cell'
+        # Strategy: save cell values, drop old cell dimension, rename value→cell, reassign coordinate
+        cell_values = ds.coords['cell'].values
+        ds = ds.drop_dims('cell')
+        ds = ds.rename({'value': 'cell'})
+        ds = ds.assign_coords({'cell': cell_values})
+        ds = ds.pipe(egh.attach_coords, signed_lon=True)
+        # ds = ds.resample(time="3H").first()
+        print("Swapped 'value' → 'cell' dimension")
         
         # 2. Rename 'level' to 'pressure' if it exists
         if 'level' in ds.dims:
@@ -926,8 +1198,8 @@ def main():
         # 3. Rename IFS variable names to standard names (only if they exist)
         var_name_mapping = {
             't': 'ta',      # temperature
-            'w': 'wa',      # vertical velocity
-            'q': 'huss',    # specific humidity
+            'w': 'omega',      # vertical velocity
+            'q': 'hus',    # specific humidity
             'r': 'hur',     # relative humidity
             '2t': 'tas'     # 2m temperature
         }
@@ -942,6 +1214,26 @@ def main():
             print(f"Renamed variables: {vars_to_rename}")
         
         print("IFS model fixes complete")
+        sys.stdout.flush()
+    
+    # ===== FIX FOR NICAM MODEL: Rename dimensions and variables =====
+    # NICAM uses 'lev' instead of 'pressure' for vertical coordinate
+    if 'lev' in ds.dims:
+        print("Detected NICAM model: Renaming 'lev' → 'pressure' dimension...")
+        sys.stdout.flush()
+        ds = ds.rename({'lev': 'pressure'})
+        print("NICAM model fix complete")
+        sys.stdout.flush()
+    
+    # ===== FIX FOR SCREAM MODEL: Rename dimensions and variables =====
+    # SCREAM uses 'level' instead of 'pressure' for vertical coordinate and pressure values are in 'lev' coordinate
+    if 'level' in ds.dims:
+        print("Detected SCREAM model: Renaming 'level' → 'pressure' dimension...")
+        sys.stdout.flush()
+        ds = ds.rename({'level': 'pressure'})
+        ds = ds.assign_coords(pressure=('pressure', ds.lev.values))
+        ds = ds.drop_vars('lev')
+        print("SCREAM model fix complete")
         sys.stdout.flush()
     
     # Get HEALPix grid
@@ -1017,6 +1309,9 @@ def main():
     )
     df_spatial_filtered['trigger_idx'] = pixel_indices
     
+    # NOTE: Time alignment will happen AFTER track subsampling (inside date range loop)
+    # This is critical because subsampling needs original timestamps to work correctly
+    
     # Parse pressure levels if provided
     pressure_levels = None
     if args.pressure_levels:
@@ -1083,6 +1378,34 @@ def main():
                 levels_str = '-'.join([str(int(p)) for p in pressure_levels])
                 pressure_suffix = f"_avg{levels_str}hPa"
         
+        # Option 2b: Inverse conversion (omega -> wa)
+        elif variable_name == 'omega' and args.convert_omega_to_wa:
+            print("Converting pressure velocity (omega) to vertical velocity (wa)...")
+            sys.stdout.flush()
+            
+            if pressure_levels is None:
+                print("ERROR: --pressure_levels required for omega to wa conversion")
+                continue
+            
+            # Check if required variables exist
+            if 'omega' not in ds or 'ta' not in ds:
+                print(f"ERROR: Variables 'omega' and 'ta' required for wa conversion")
+                continue
+            
+            # Convert omega to wa (returns only wa variable, not full dataset)
+            variable_data = convert_omega_to_w(ds, pressure_levels)
+            variable_name = 'wa'  # Change variable name for output
+            print(f"Variable data ready (wa)")
+            use_precomputed = False
+            
+            # Set pressure suffix for output filename
+            is_3d_variable = True
+            if len(pressure_levels) == 1:
+                pressure_suffix = f"_{int(pressure_levels[0])}hPa"
+            else:
+                levels_str = '-'.join([str(int(p)) for p in pressure_levels])
+                pressure_suffix = f"_avg{levels_str}hPa"
+        
         # Option 3: Standard variable from catalog
         else:
             print(f"Setting up variable data ({variable_name})...")
@@ -1108,17 +1431,26 @@ def main():
                             pressure_levels, variable_data.pressure
                         )
                         
-                        # Select and average specified pressure levels (using dataset units)
-                        variable_data = variable_data.sel(
-                            pressure=pressure_levels_dataset, method='nearest'
-                        ).mean(dim='pressure')
-                        
-                        # Set pressure suffix for averaged data (always use hPa for filename)
-                        if len(pressure_levels) == 1:
+                        # SELECT PRESSURE LEVEL(S) IMMEDIATELY
+                        # This reduces from 3D (cell, time, pressure) to 2D (cell, time)
+                        # Making all subsequent operations much faster
+                        if len(pressure_levels_dataset) == 1:
+                            # Single level - just select it
+                            variable_data = variable_data.sel(
+                                pressure=pressure_levels_dataset[0], method='nearest'
+                            )
                             pressure_suffix = f"_{int(pressure_levels[0])}hPa"
+                            print(f"Selected single pressure level: {pressure_levels[0]} hPa")
                         else:
+                            # Multiple levels - select then average
+                            variable_data = variable_data.sel(
+                                pressure=pressure_levels_dataset, method='nearest'
+                            ).mean(dim='pressure')
                             levels_str = '-'.join([str(int(p)) for p in pressure_levels])
                             pressure_suffix = f"_avg{levels_str}hPa"
+                            print(f"Selected and averaged pressure levels: {pressure_levels} hPa")
+                        
+                        print(f"Variable is now 2D (cell, time) - ready for efficient loading")
                 
                 print(f"Variable data ready")
                 use_precomputed = False
@@ -1183,6 +1515,13 @@ def main():
                     print(f"WARNING: No tracks remain after subsampling, skipping")
                     continue
             
+            # CRITICAL: Align track times to dataset times AFTER subsampling
+            # This must happen after subsampling because subsampling needs original timestamps
+            # Time alignment dramatically reduces unique times (e.g., 10,199 → 3,401 for IFS)
+            print("\nAligning track times to dataset times...")
+            sys.stdout.flush()
+            filtered_df = align_track_times_to_dataset(filtered_df, ds.time.values, 'base_time')
+            
             sys.stdout.flush()
             
             # Calculate circular areas for this date range
@@ -1217,7 +1556,8 @@ def main():
                 variable_data, 
                 track_times_map,
                 batch_size=args.batch_size,
-                variable_name=variable_name
+                variable_name=variable_name,
+                time_batch_size=args.time_batch_size
             )
             
             if len(stats_df) == 0:
@@ -1237,7 +1577,8 @@ def main():
                     variable_data,
                     track_metadata,
                     hours_before=args.hours_before_init,
-                    model_freq=args.model_time_freq
+                    model_freq=args.model_time_freq,
+                    time_batch_size=args.time_batch_size
                 )
             else:
                 # If no pre-convective data, still need to add time_offset_hours
