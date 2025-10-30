@@ -269,7 +269,7 @@ def convert_omega_to_w(ds, pressure_levels_hPa):
 
 
 def load_precomputed_variable(precomputed_dir, variable_name, model_name, zoom_level, 
-                               time_res, start_date, end_date):
+                               time_res, start_date, end_date, filename_pattern=None):
     """
     Load pre-computed variables from separate files
     
@@ -289,6 +289,10 @@ def load_precomputed_variable(precomputed_dir, variable_name, model_name, zoom_l
         Start date for filtering
     end_date : pd.Timestamp
         End date for filtering
+    filename_pattern : str, optional
+        Custom filename pattern (e.g., 'scream_ne120_wind_shear_hp8_3H')
+        If None, defaults to '{model}_{variable}_hp{zoom}_{timeRes}'
+        Pattern will be completed with '.{year}{month:02d}.nc'
     
     Returns:
     --------
@@ -306,8 +310,14 @@ def load_precomputed_variable(precomputed_dir, variable_name, model_name, zoom_l
         year = current_date.year
         month = current_date.month
         
-        # Construct filename pattern
-        filename = f"{model_name}_{variable_name}_hp{zoom_level}_{time_res}.{year}{month:02d}.nc"
+        # Construct filename based on pattern
+        if filename_pattern:
+            # Use custom pattern (e.g., 'scream_ne120_wind_shear_hp8_3H')
+            filename = f"{filename_pattern}.{year}{month:02d}.nc"
+        else:
+            # Default pattern: model_variable_hp{zoom}_{timeRes}
+            filename = f"{model_name}_{variable_name}_hp{zoom_level}_{time_res}.{year}{month:02d}.nc"
+        
         filepath = os.path.join(precomputed_dir, filename)
         
         if os.path.exists(filepath):
@@ -730,6 +740,61 @@ def add_preconvective_data(stats_df, preconv_areas, variable_data, track_metadat
                      'mean', 'median', 'min', 'max', 'std', 'count', 'num_valid']
         return stats_df[final_cols].copy()
 
+def align_track_times_to_dataset(df, dataset_times, time_column='base_time'):
+    """
+    Align track timestamps to the nearest dataset times.
+    
+    This is crucial for resampled datasets (e.g., IFS 1H → 3H):
+    - Without alignment: tracks keep original timestamps → 10,199 unique times
+    - With alignment: tracks snap to dataset times → 3,401 unique times
+    - Results in ~3× fewer time batches and ~3× faster extraction
+    
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        Track dataframe with time column
+    dataset_times : array-like
+        Available times in the dataset (e.g., from ds.time.values)
+    time_column : str
+        Name of time column in df (default: 'base_time')
+    
+    Returns:
+    --------
+    pd.DataFrame
+        DataFrame with aligned timestamps
+    """
+    print(f"Aligning track times to dataset times...")
+    print(f"  Dataset has {len(dataset_times)} time steps")
+    sys.stdout.flush()
+    
+    # Convert to pandas datetime for easier manipulation
+    dataset_times_pd = pd.to_datetime(dataset_times)
+    track_times_pd = pd.to_datetime(df[time_column])
+    
+    # For each track time, find nearest dataset time
+    aligned_times = []
+    for track_time in track_times_pd:
+        # Find nearest dataset time
+        time_diffs = np.abs(dataset_times_pd - track_time)
+        nearest_idx = time_diffs.argmin()
+        aligned_times.append(dataset_times_pd[nearest_idx])
+    
+    # Create new dataframe with aligned times
+    df_aligned = df.reset_index(drop=True).copy()
+    df_aligned[time_column] = aligned_times
+    
+    # Report statistics
+    original_unique = len(track_times_pd.unique())
+    aligned_unique = len(pd.Series(aligned_times).unique())
+    reduction = (1 - aligned_unique / original_unique) * 100
+    
+    print(f"  Original unique times: {original_unique}")
+    print(f"  Aligned unique times: {aligned_unique}")
+    print(f"  Reduction: {reduction:.1f}%")
+    sys.stdout.flush()
+    
+    return df_aligned
+
 
 def load_land_fraction_summary(land_fraction_file, land_threshold=None):
     """
@@ -853,6 +918,10 @@ def main():
     # Pre-computed variable options
     parser.add_argument('--precomputed_dir', default=None,
                         help='Directory containing pre-computed variables')
+    parser.add_argument('--precomputed_pattern', default=None,
+                        help='Filename pattern for pre-computed files (e.g., "scream_ne120_wind_shear_hp8_3H"). '
+                             'If not provided, defaults to {model}_{variable}_hp{zoom}_{timeRes}. '
+                             'Pattern will be completed with .{year}{month:02d}.nc')
     parser.add_argument('--time_res', default='PT3H',
                         help='Time resolution of precomputed files (e.g., PT3H)')
     
@@ -989,8 +1058,8 @@ def main():
 
     # Resample IMMEDIATELY for IFS
     if args.catalog_model.startswith('ifs'):
-        print("Resampling IFS data from hourly to 3H...")
-        ds = ds.resample(time="3H").first()
+        print(f"Resampling IFS data from hourly to {args.model_time_freq}...")
+        ds = ds.resample(time=args.model_time_freq).first()
         print(f"After resampling: {len(ds.time)} time steps")
     
     # ===== FIX FOR IFS MODEL: Rename dimensions and variables =====
@@ -1019,7 +1088,7 @@ def main():
         # 3. Rename IFS variable names to standard names (only if they exist)
         var_name_mapping = {
             't': 'ta',      # temperature
-            'w': 'wa',      # vertical velocity
+            'w': 'omega',      # vertical velocity
             'q': 'hus',    # specific humidity
             'r': 'hur',     # relative humidity
             '2t': 'tas'     # 2m temperature
@@ -1291,7 +1360,8 @@ def main():
                         zoom_level,
                         args.time_res,
                         start_date_str,
-                        end_date_str
+                        end_date_str,
+                        filename_pattern=args.precomputed_pattern
                     )
                     variable_data = ds_precomp[original_variable]
                     print(f"Pre-computed variable data ready")
@@ -1323,6 +1393,10 @@ def main():
                 if len(filtered_df) == 0:
                     print(f"WARNING: No tracks remain after subsampling, skipping")
                     continue
+            
+            # print("\nAligning track times to dataset times...")
+            sys.stdout.flush()
+            # filtered_df = align_track_times_to_dataset(filtered_df, ds.time.values, 'base_time')
             
             sys.stdout.flush()
             
