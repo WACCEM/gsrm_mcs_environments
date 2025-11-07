@@ -77,6 +77,20 @@ def extract_land_fractions_batched(all_areas, land_fraction_data, batch_size=500
     Extract land fraction statistics for all circular areas using batched processing.
     
     This is the optimized version that extracts land fractions from pixels.
+    
+    Parameters:
+    all_areas : dict
+        Dictionary with (track_id, time_idx, radius) -> pixel_array
+    variable_data : xarray.DataArray
+        The variable to extract land fractions from (land fraction data)
+    track_times_map : dict
+        Dictionary mapping (track_id, time_idx) -> base_time (actual timestamp)
+    batch_size : int
+        Batch size for processing areas
+
+    Returns:
+    pd.DataFrame
+        DataFrame with land fraction statistics for each area
     """
     
     # Get all unique pixels needed
@@ -250,8 +264,64 @@ def main():
     parser.add_argument('--radii', default="5,3.5,2", help='Comma-separated list of radii in degrees')
     parser.add_argument('--lat_var', default='meanlat', help='Latitude variable name in tracks')
     parser.add_argument('--lon_var', default='meanlon', help='Longitude variable name in tracks')
+
+    # Model time frequency
+    parser.add_argument('--model_time_freq', default=None,
+                        help='Model output time frequency (e.g., "1H", "3H", "6H") - used to subsample track time steps')
     
     args = parser.parse_args()
+
+    # Define subsampling function
+    def subsample_tracks_by_frequency(df, model_freq):
+        """
+        Subsample track time steps to match model output frequency.
+        
+        Parameters:
+        -----------
+        df : pandas.DataFrame
+            Track dataframe with 'tracks', 'times', and 'base_time' columns
+        model_freq : str
+            Model output frequency (e.g., '1H', '3H', '6H')
+        
+        Returns:
+        --------
+        pandas.DataFrame
+            Filtered dataframe with only time steps aligned to model frequency
+        """
+        # import pandas as pd
+        
+        print(f"Subsampling tracks to model frequency: {model_freq}")
+        original_count = len(df)
+        
+        # Convert frequency string to timedelta
+        freq_td = pd.Timedelta(model_freq)
+        
+        # Group by track and filter
+        filtered_rows = []
+        for track_id, track_group in df.groupby('tracks'):
+            # Sort by time
+            track_group = track_group.sort_values('times')
+            
+            # Get base times
+            base_times = pd.to_datetime(track_group['base_time'].values)
+            
+            # Find the first timestamp for this track
+            first_time = base_times.min()
+            
+            # Create mask for times that align with model frequency
+            time_diffs = base_times - first_time
+            # Keep times where the difference is a multiple of model frequency
+            aligned_mask = (time_diffs % freq_td) == pd.Timedelta(0)
+            
+            filtered_rows.append(track_group[aligned_mask])
+        
+        result_df = pd.concat(filtered_rows, ignore_index=True)
+        new_count = len(result_df)
+        reduction = (1 - new_count/original_count) * 100
+        
+        print(f"Subsampled from {original_count} to {new_count} time points ({reduction:.1f}% reduction)")
+        
+        return result_df
     
     # Start timing
     start_time = time.time()
@@ -355,6 +425,15 @@ def main():
             filter_conditions.append(df[args.lon_var].between(args.min_lon, args.max_lon))
     
     filtered_df = df[np.logical_and.reduce(filter_conditions)].copy()
+
+    # Subsample tracks to model frequency if specified
+    if args.model_time_freq and args.model_time_freq not in ['1H', '1h']:
+        filtered_df = subsample_tracks_by_frequency(filtered_df, args.model_time_freq)
+        if len(filtered_df) == 0:
+            print(f"WARNING: No tracks remain after subsampling, skipping")
+            
+    sys.stdout.flush()
+
     filtered_df = filtered_df.reset_index(drop=True)  # Reset index after filtering
     
     print(f"Filtered to {len(filtered_df)} track time points")
