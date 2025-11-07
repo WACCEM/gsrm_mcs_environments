@@ -9,13 +9,12 @@
 #SBATCH --mail-type=FAIL,END
 
 module load python
-module list
 conda activate /global/common/software/m1867/python/lp_env/easy
 
 # Set up paths and parameters
 ROOT_DIR="/global/cfs/cdirs/m4581/gsharing/hackathon"
 TRACK_FILE="${ROOT_DIR}/tracking/mcs/icon_d3hp003/stats/mcs_tracks_final_20200102.0000_20201231.2330.nc" #ICON
-OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/ICON"
+OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/ICON_all"
 
 # PRECOMPUTED LAND FRACTION DATA (from get_land_fractions.py output)
 LAND_FRACTION_FILE="" #/pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/mcs_land_fractions_icon_d3hp003_zoom8_summary.parquet" # for ICON
@@ -29,11 +28,11 @@ mkdir -p $OUTPUT_DIR
 CATALOG_URL="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"
 CURRENT_LOCATION="NERSC" 
 CATALOG_MODEL="icon_d3hp003" 
-CATALOG_PARAMS='{"zoom": 8, time="PT6H",time_method='inst' }'  # For 3D ICON data, use: '{"zoom": 8, time="PT6H",time_method='inst'}'
+CATALOG_PARAMS='{"zoom": 8, time="PT3H" }'  # For 3D ICON data, use: '{"zoom": 8, time="PT6H",time_method='inst'}'
 
 # Set spatial bounds
-MIN_LAT="-30"
-MAX_LAT="30"
+MIN_LAT="-90"
+MAX_LAT="90"
 MIN_LON="-180"
 MAX_LON="180"
 
@@ -50,13 +49,18 @@ HOURS_BEFORE_INIT="24"  # Extract 24 hours before track initiation
 BATCH_SIZE="500"
 MODEL_TIME_FREQ="3H"  # Model output frequency (1H, 3H, 6H, etc.) - ICON is 6-hourly for 3D
 
+# Pre-computed variable options (leave empty if not using pre-computed data)
+PRECOMPUTED_DIR=""  # Directory with pre-computed files: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON
+PRECOMPUTED_PATTERN=""  # Filename pattern (optional), e.g. "icon_d3hp003_wind_shear_hp8_6H"
+TIME_RES=""  # Time resolution of pre-computed files, e.g. "PT6H"
+
 # 3D variable options (for pressure level data)
-PRESSURE_LEVELS=("500")  # For 3D variables, specify levels: "850,500,300"
+PRESSURE_LEVELS=("")  # For 3D variables, specify levels: "850,500,300"
 CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 
 # Set variables to extract
-VARIABLES=("tas")  # Add more as needed: "tas" "hflsd" "clt"  "prw"
-# VARIABLES=("") #"wa, hur
+VARIABLES=("hfssd" "huss")  # Add more as needed: "tas" "hflsd" "clt"  "prw"
+# VARIABLES=("tas") #"wa, hur, prw , hflsd, hfssd
 # ===== EXAMPLE: Extract omega at 850 hPa from ICON =====
 # Uncomment these lines to extract omega at 850 hPa:
 # CATALOG_MODEL="icon_d3hp003"
@@ -114,6 +118,14 @@ echo "================================================"
 OPTIONAL_PARAMS=""
 if [ -n "$PRESSURE_LEVELS" ]; then
     OPTIONAL_PARAMS="$OPTIONAL_PARAMS --pressure_levels $PRESSURE_LEVELS"
+fi
+if [ -n "$PRECOMPUTED_DIR" ]; then
+    OPTIONAL_PARAMS="$OPTIONAL_PARAMS --precomputed_dir $PRECOMPUTED_DIR --time_res $TIME_RES"
+    echo "Using pre-computed data from: $PRECOMPUTED_DIR"
+    if [ -n "$PRECOMPUTED_PATTERN" ]; then
+        OPTIONAL_PARAMS="$OPTIONAL_PARAMS --precomputed_pattern $PRECOMPUTED_PATTERN"
+        echo "Using filename pattern: $PRECOMPUTED_PATTERN"
+    fi
 fi
 if [ -n "$CONVERT_WA_TO_OMEGA" ]; then
     OPTIONAL_PARAMS="$OPTIONAL_PARAMS $CONVERT_WA_TO_OMEGA"

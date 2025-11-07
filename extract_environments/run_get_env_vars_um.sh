@@ -9,16 +9,15 @@
 #SBATCH --mail-type=FAIL,END
 
 module load python
-module list
 conda activate /global/common/software/m1867/python/lp_env/easy
 
 # Set up paths and parameters
 ROOT_DIR="/global/cfs/cdirs/m4581/gsharing/hackathon"
 TRACK_FILE="${ROOT_DIR}/tracking/mcs/um_glm_n2560_RAL3p3/stats/mcs_tracks_final_20200201.0000_20210301.0000.nc" #UM
-OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/UM"
+OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/UM_all"
 
 # PRECOMPUTED LAND FRACTION DATA (from get_land_fractions.py output)
-LAND_FRACTION_FILE="/pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/mcs_land_fractions_um_glm_n2560_RAL3p3_zoom8_summary.parquet"
+LAND_FRACTION_FILE="" #"/pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/mcs_land_fractions_um_glm_n2560_RAL3p3_zoom8_summary.parquet"
 
 
 # Create output directory if it doesn't exist
@@ -32,8 +31,8 @@ CATALOG_MODEL="um_glm_n2560_RAL3p3" #
 CATALOG_PARAMS='{"zoom": 8}'  # For 3D UM data, use: '{"zoom": 8, "time": "PT3H"}'
 
 # Set spatial bounds
-MIN_LAT="-30"
-MAX_LAT="30"
+MIN_LAT="-90"
+MAX_LAT="90"
 MIN_LON="-180"
 MAX_LON="180"
 
@@ -50,13 +49,18 @@ HOURS_BEFORE_INIT="24"  # Extract 24 hours before track initiation
 BATCH_SIZE="500"
 MODEL_TIME_FREQ="3H"  # Model output frequency (1H, 3H, 6H, etc.) - UM is 3-hourly
 
+# Pre-computed variable options (leave empty if not using pre-computed data)
+PRECOMPUTED_DIR=""  # Directory with pre-computed files /pscratch/sd/p/paccini/temp/hackathon/wind_shear/UM
+PRECOMPUTED_PATTERN=""  # Filename pattern (optional), e.g."um_glm_n2560_RAL3p3_wind_shear_hp8_3H"
+TIME_RES=""  # Time resolution of pre-computed files, e.g. "PT3H"
+
 # 3D variable options (for pressure level data)
 PRESSURE_LEVELS=("") # For 3D variables, specify levels: "850,500,300"
 CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 
 # Set variables to extract
-VARIABLES=( "huss")  # Add more as needed: "tas" "hflsd" "clt" "huss"
-# VARIABLES=("") # "wa" "hur"
+VARIABLES=("tas" "hflsd")  # Add more as needed: "tas" "hflsd" "clt" "huss"
+# VARIABLES=( "wa") # "wa" "hur" "hus" "deep_shear_magnitude"
 
 # ===== EXAMPLE: Extract omega at 850 hPa from UM =====
 # Uncomment these lines to extract omega at 850 hPa:
@@ -76,21 +80,7 @@ VARIABLES=( "huss")  # Add more as needed: "tas" "hflsd" "clt" "huss"
 
 # Define monthly date ranges for processing
 DATE_RANGES=(
-  
-  "2020-02-01 2020-02-29"
-  "2020-03-01 2020-03-31"
-  "2020-04-01 2020-04-30"
-  "2020-05-01 2020-05-31"
-  "2020-06-01 2020-06-30"
-  "2020-07-01 2020-07-31"
-  "2020-08-01 2020-08-31"
-  "2020-09-01 2020-09-30"
-  "2020-10-01 2020-10-31"
-  "2020-11-01 2020-11-30"
-  "2020-12-01 2020-12-31"
-  "2021-01-01 2021-01-31"
-  "2021-02-01 2021-02-28"
-  "2021-03-01 2021-03-31"
+  "2020-02-01 2021-03-31"
 )
 
 # Check if land fraction file exists
@@ -114,6 +104,14 @@ echo "================================================"
 OPTIONAL_PARAMS=""
 if [ -n "$PRESSURE_LEVELS" ]; then
     OPTIONAL_PARAMS="$OPTIONAL_PARAMS --pressure_levels $PRESSURE_LEVELS"
+fi
+if [ -n "$PRECOMPUTED_DIR" ]; then
+    OPTIONAL_PARAMS="$OPTIONAL_PARAMS --precomputed_dir $PRECOMPUTED_DIR --time_res $TIME_RES"
+    echo "Using pre-computed data from: $PRECOMPUTED_DIR"
+    if [ -n "$PRECOMPUTED_PATTERN" ]; then
+        OPTIONAL_PARAMS="$OPTIONAL_PARAMS --precomputed_pattern $PRECOMPUTED_PATTERN"
+        echo "Using filename pattern: $PRECOMPUTED_PATTERN"
+    fi
 fi
 if [ -n "$CONVERT_WA_TO_OMEGA" ]; then
     OPTIONAL_PARAMS="$OPTIONAL_PARAMS $CONVERT_WA_TO_OMEGA"

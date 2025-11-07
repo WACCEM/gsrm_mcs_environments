@@ -32,12 +32,14 @@ LON_VAR="meanlon"
 START_DATE="2020-01-01"
 END_DATE="2021-03-01"
 OUTPUT_FORMAT="parquet"
+MODEL_TIME_FREQ="6H"  # Model output frequency (1H, 3H, 6H, etc.) - 
+
 
 # ===== SPATIAL BOUNDS =====
-MIN_LAT="-30"
-MAX_LAT="30"
-MIN_LON="-177"
-MAX_LON="177"
+MIN_LAT="-90"
+MAX_LAT="90"
+MIN_LON="-180"
+MAX_LON="180"
 
 # ===== RUN SCRIPT V2 (optimized with batched approach - 1.5x faster!) =====
 echo "=========================================="
@@ -49,7 +51,7 @@ echo "Date range: $START_DATE to $END_DATE"
 echo "Output directory: $OUTPUT_DIR"
 echo "=========================================="
 
-srun -n 1 -c 32 --cpu_bind=cores python get_land_fractions_v2.py \
+srun -n 1 -c 32 --cpu_bind=cores python get_land_fractions.py \
   --catalog_url "$CATALOG_URL" \
   --current_location "$CURRENT_LOCATION" \
   --catalog_model "$CATALOG_MODEL" \
@@ -66,7 +68,8 @@ srun -n 1 -c 32 --cpu_bind=cores python get_land_fractions_v2.py \
   --max_lon "$MAX_LON" \
   --radii "$RADII" \
   --lat_var "$LAT_VAR" \
-  --lon_var "$LON_VAR"
+  --lon_var "$LON_VAR" \
+  --model_time_freq "$MODEL_TIME_FREQ" 
 
 echo ""
 echo "=========================================="
