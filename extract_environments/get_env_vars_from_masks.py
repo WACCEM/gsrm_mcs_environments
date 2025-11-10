@@ -31,12 +31,12 @@ import intake
 from env_extraction_utils import (
     convert_time, parse_pressure_levels, normalize_pressure_levels,
     convert_w_to_omega, convert_omega_to_w, compute_surface_wind_speed,
-    apply_model_fixes, subsample_tracks_by_frequency
+    apply_model_fixes, subsample_tracks_by_frequency,
+    align_track_times_to_model_frequency
 )
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
-
 
 def load_mask_file(mask_path, verbose=False):
     """
@@ -172,13 +172,14 @@ def extract_statistics_from_mask(variable_data, mask_cells, data_time):
 
 
 def extract_variable_statistics_from_masks(track_df, mask_data, variable_data, 
-                                           batch_size=50, variable_name='var'):
+                                           batch_size=50, variable_name='var', model_freq='3H'):
     """
     Extract variable statistics for all tracks using small_batch streaming approach.
     
-    This approach loads masks for small batches of unique times (batch_size at a time),
-    processes all tracks at those times, then moves to the next batch. This amortizes
-    I/O overhead by reusing loaded mask time slices across multiple tracks.
+    This approach uses align_track_times_to_model_frequency utility to align track times
+    to model output times, then loads masks for small batches of unique times (batch_size 
+    at a time), processes all tracks at those times, then moves to the next batch. This 
+    amortizes I/O overhead by reusing loaded mask time slices across multiple tracks.
     
     Parameters:
     -----------
@@ -192,6 +193,8 @@ def extract_variable_statistics_from_masks(track_df, mask_data, variable_data,
         Number of unique times to load at once (default: 50)
     variable_name : str
         Name of variable (for progress messages)
+    model_freq : str
+        Model output frequency (e.g., '3H') for time alignment
     
     Returns:
     --------
@@ -199,20 +202,27 @@ def extract_variable_statistics_from_masks(track_df, mask_data, variable_data,
         DataFrame with columns: track_id, time_idx, data_time, time_offset_hours,
                                 mean, median, min, max, std, count, num_valid
     """
-    print(f"\nExtracting {variable_name} statistics using track masks (small_batch approach)...")
+    print(f"\nExtracting {variable_name} statistics using track masks (align_track_times approach)...")
     sys.stdout.flush()
     
     total_points = len(track_df)
     print(f"  Processing {total_points} track-time combinations")
     
-    # Get track start times for time offset calculation
+    # Use utility function to subsample tracks and align to model frequency
+    # This:
+    #   1. Subsamples each track every N hours from initiation (preserves start time)
+    #   2. Aligns subsampled times to nearest model output times
+    #   3. Returns df with 'base_time' (subsampled) and 'extraction_time' (aligned)
+    track_df = align_track_times_to_model_frequency(track_df.copy(), model_freq)
+    
+    # Get track start times for time offset calculation (use subsampled base_time)
     track_start_times = track_df.groupby('track_id')['base_time'].first().to_dict()
     
-    # Group by unique times for batched processing
-    unique_times = sorted(track_df['base_time'].unique())
+    # Group by unique EXTRACTION times for batched processing
+    unique_times = sorted(track_df['extraction_time'].unique())
     n_unique_times = len(unique_times)
     
-    print(f"  Unique times: {n_unique_times}")
+    print(f"  Unique extraction times: {n_unique_times}")
     print(f"  Batch size: {batch_size} times per batch")
     sys.stdout.flush()
     
@@ -230,18 +240,18 @@ def extract_variable_statistics_from_masks(track_df, mask_data, variable_data,
             print(f"\n  Batch {batch_num}/{total_batches}: Loading {len(batch_times)} time slices...")
         sys.stdout.flush()
         
-        # Load mask data for this batch of times (memory-efficient with .sel)
+        # Load mask and variable data for this batch of EXTRACTION times
+        # Use method='nearest' to handle any minor time mismatches
         mask_batch = mask_data.sel(time=batch_times, method='nearest')
         variable_batch = variable_data.sel(time=batch_times, method='nearest')
         
         # Load into memory to avoid repeated lazy selections
-        # print(f"  Loading data into memory...")
         sys.stdout.flush()
         mask_batch = mask_batch.compute()
         variable_batch = variable_batch.compute()
         
-        # Get all tracks at these times
-        df_batch = track_df[track_df['base_time'].isin(batch_times)]
+        # Get all tracks at these EXTRACTION times
+        df_batch = track_df[track_df['extraction_time'].isin(batch_times)]
         n_batch_tracks = len(df_batch)
         
         if batch_num % 10 == 0:
@@ -252,30 +262,34 @@ def extract_variable_statistics_from_masks(track_df, mask_data, variable_data,
         for idx, row in df_batch.iterrows():
             track_id = int(row['track_id'])
             time_idx = int(row['time_idx'])
-            track_time = pd.Timestamp(row['base_time'])
+            extraction_time = pd.Timestamp(row['extraction_time'])
+            original_time = pd.Timestamp(row['base_time'])
             
             try:
                 # Get mask cells for this track-time (from batched mask)
+                # Use extraction_time for extraction
                 # Masks start at 1, track_ids (from stats file) start at 0
-                mask_cells = get_mask_cells_for_track(mask_batch, track_id + 1, track_time)
+                mask_cells = get_mask_cells_for_track(mask_batch, track_id + 1, extraction_time)
 
                 if mask_cells is None or len(mask_cells) == 0:
                     continue
                 
                 # Extract statistics (from batched variable data)
-                stats = extract_statistics_from_mask(variable_batch, mask_cells, track_time)
+                # Use extraction_time for extraction
+                stats = extract_statistics_from_mask(variable_batch, mask_cells, extraction_time)
                 
                 if stats is None:
                     continue
                 
-                # Calculate time offset from track start
-                time_offset_hours = (track_time - track_start_times[track_id]).total_seconds() / 3600
+                # Calculate time offset from track start (use original base_time)
+                time_offset_hours = (original_time - track_start_times[track_id]).total_seconds() / 3600
                 
-                # Store result
+                # Store result with both data_time and extraction_time
                 result = {
                     'track_id': track_id,
                     'time_idx': time_idx,
-                    'data_time': track_time,
+                    'data_time': extraction_time,  # Use extraction_time for data extraction
+                    'extraction_time': extraction_time,  # Also include as explicit column
                     'time_offset_hours': time_offset_hours,
                     **stats
                 }
@@ -437,30 +451,13 @@ def main():
     print(f"Loading only essential variables: {required_vars}")
     subset = ds_tracks[required_vars].compute()
     df_tracks = subset.to_dataframe().reset_index()
-    
-    # Rename columns for consistency
-    column_rename_map = {}
-    if 'tracks' in df_tracks.columns:
-        column_rename_map['tracks'] = 'track_id'
-    if 'times' in df_tracks.columns:
-        column_rename_map['times'] = 'time_idx'
-    
-    if column_rename_map:
-        df_tracks = df_tracks.rename(columns=column_rename_map)
-    
-    # Ensure required columns exist
-    if 'track_id' not in df_tracks.columns or 'time_idx' not in df_tracks.columns:
-        raise ValueError("Track file must have 'tracks' and 'times' dimensions")
-    
-    # Ensure base_time exists
-    if 'base_time' not in df_tracks.columns:
-        raise ValueError("Track file must have 'base_time' coordinate")
+
     
     # Convert base_time to datetime
     df_tracks['base_time'] = pd.to_datetime(df_tracks['base_time'])
     
     print(f"Loaded {len(df_tracks)} track time points")
-    print(f"Unique tracks: {df_tracks['track_id'].nunique()}")
+    # print(f"Unique tracks: {df_tracks['track_id'].nunique()}")
     print(f"Time range: {df_tracks['base_time'].min()} to {df_tracks['base_time'].max()}")
     sys.stdout.flush()
     
@@ -484,7 +481,7 @@ def main():
     df_spatial_filtered = df_tracks[spatial_filter].copy()
     
     print(f"After spatial filtering: {len(df_spatial_filtered)} track time points")
-    print(f"Unique tracks: {df_spatial_filtered['track_id'].nunique()}")
+    # print(f"Unique tracks: {df_spatial_filtered['track_id'].nunique()}")
     sys.stdout.flush()
     
     if len(df_spatial_filtered) == 0:
@@ -685,20 +682,50 @@ def main():
                 print(f"WARNING: No tracks in date range {start_date_str} to {end_date_str}, skipping")
                 continue
             
-            # Subsample tracks to model frequency if needed
-            if args.model_time_freq and args.model_time_freq not in ['1H', '1h']:
-                filtered_df = subsample_tracks_by_frequency(filtered_df, args.model_time_freq)
-                if len(filtered_df) == 0:
-                    print(f"WARNING: No tracks remain after subsampling, skipping")
-                    continue
+            # NOTE: Subsampling is now handled inside extract_variable_statistics_from_masks
+            # via align_track_times_to_model_frequency, so we don't need to subsample here
             
+            # Rename columns for consistency
+            column_rename_map = {}
+            if 'tracks' in filtered_df.columns:
+                column_rename_map['tracks'] = 'track_id'
+            if 'times' in filtered_df.columns:
+                column_rename_map['times'] = 'time_idx'
+            
+            if column_rename_map:
+                filtered_df = filtered_df.rename(columns=column_rename_map)
+            
+            # Check for duplicates
+            duplicates = filtered_df[filtered_df.duplicated(subset=['track_id', 'base_time'], keep=False)]
+            if len(duplicates) > 0:
+                print(f"  WARNING: Found {len(duplicates)} duplicate (track_id, base_time) combinations!")
+                print(f"  Example duplicates:\n{duplicates.head()}")
+                # Remove duplicates, keeping first occurrence
+                filtered_df = filtered_df.drop_duplicates(subset=['track_id', 'base_time'], keep='first')
+                print(f"  After deduplication: {len(filtered_df)} track-time combinations")
+            
+            if len(filtered_df) == 0:
+                print(f"WARNING: No tracks remain after processing, skipping")
+                continue
+
+            
+
+            # # Ensure required columns exist
+            # if 'track_id' not in filtered_df.columns or 'time_idx' not in filtered_df.columns:
+            #     raise ValueError("Track file must have 'tracks' and 'times' dimensions")
+            
+            # # Ensure base_time exists
+            # if 'base_time' not in filtered_df.columns:
+            #     raise ValueError("Track file must have 'base_time' coordinate")
+    
             # Extract statistics using masks
             stats_df = extract_variable_statistics_from_masks(
                 filtered_df,
                 mask_data,
                 variable_data,
                 batch_size=args.batch_size,
-                variable_name=variable_name
+                variable_name=variable_name,
+                model_freq=args.model_time_freq
             )
             
             if len(stats_df) == 0:

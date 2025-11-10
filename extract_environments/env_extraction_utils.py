@@ -428,6 +428,45 @@ def apply_model_fixes(ds, model_name):
     return ds
 
 
+# def subsample_tracks_by_frequency(df, model_time_freq):
+#     """
+#     Subsample track time steps to match model output frequency.
+    
+#     For hourly tracks, keep only times that align with model frequency.
+#     For example, if model_time_freq='3H', keep only times at 00:00, 03:00, 06:00, etc.
+    
+#     Parameters:
+#     -----------
+#     df : pd.DataFrame
+#         DataFrame with 'base_time' column (track times)
+#     model_time_freq : str
+#         Model frequency string (e.g., '1H', '3H', '6H')
+    
+#     Returns:
+#     --------
+#     pd.DataFrame
+#         Subsampled DataFrame
+#     """
+#     print(f"Subsampling tracks to match model frequency: {model_time_freq}")
+#     sys.stdout.flush()
+    
+#     # Parse frequency to hours
+#     freq_hours = int(model_time_freq.replace('H', '').replace('h', ''))
+    
+#     # Convert base_time to datetime if needed
+#     if not pd.api.types.is_datetime64_any_dtype(df['base_time']):
+#         df['base_time'] = pd.to_datetime(df['base_time'])
+    
+#     # Keep only times where hour is divisible by freq_hours
+#     mask = df['base_time'].dt.hour % freq_hours == 0
+#     df_subsampled = df[mask].copy()
+    
+#     print(f"  Subsampled from {len(df)} to {len(df_subsampled)} time steps")
+#     sys.stdout.flush()
+    
+#     return df_subsampled
+
+# Define subsampling function
 def subsample_tracks_by_frequency(df, model_freq):
     """
     Subsample track time steps to match model output frequency.
@@ -435,7 +474,7 @@ def subsample_tracks_by_frequency(df, model_freq):
     Parameters:
     -----------
     df : pandas.DataFrame
-        Track dataframe with 'tracks', 'times', and 'base_time' columns
+        Track dataframe with 'tracks'/'track_id', 'times'/'time_idx', and 'base_time' columns. 
     model_freq : str
         Model output frequency (e.g., '1H', '3H', '6H')
     
@@ -448,15 +487,19 @@ def subsample_tracks_by_frequency(df, model_freq):
     
     print(f"Subsampling tracks to model frequency: {model_freq}")
     original_count = len(df)
+
+    # Determine which column name is used
+    track_col = 'tracks' if 'tracks' in df.columns else 'track_id'
+    time_col = 'times' if 'times' in df.columns else 'time_idx'
     
     # Convert frequency string to timedelta
     freq_td = pd.Timedelta(model_freq)
     
     # Group by track and filter
     filtered_rows = []
-    for track_id, track_group in df.groupby('tracks'):
+    for track_id, track_group in df.groupby(track_col):
         # Sort by time
-        track_group = track_group.sort_values('times')
+        track_group = track_group.sort_values(time_col)
         
         # Get base times
         base_times = pd.to_datetime(track_group['base_time'].values)
@@ -482,48 +525,94 @@ def subsample_tracks_by_frequency(df, model_freq):
 
 def align_track_times_to_model_frequency(df, model_freq):
     """
-    Align track times to nearest model output times WITHOUT removing rows.
+    Two-step process: subsample tracks to model frequency, then align to model output times.
     
-    This preserves all track time steps (including initiation) while ensuring
-    we extract from the nearest available model output time.
+    Step 1: Subsample each track to model frequency starting from initiation time
+            (e.g., if track starts at 04:00, subsample to 04:00, 07:00, 10:00, ... for 3H freq)
+    
+    Step 2: Align subsampled times to nearest available model output times
+            (e.g., 04:00→03:00, 07:00→06:00, 10:00→09:00 for model times at 00, 03, 06, 09, ...)
+    
+    This ensures:
+    - Track initiation is always preserved
+    - Track is sampled every N hours from its start
+    - Extraction uses nearest available model time
+    - Time offsets are calculated from track start (subsampled base_time)
     
     Parameters:
     -----------
     df : pd.DataFrame
-        Track dataframe with 'base_time' column
+        Track dataframe with 'track_id', 'time_idx', and 'base_time' columns
     model_freq : str
         Model frequency (e.g., '3H')
     
     Returns:
     --------
     pd.DataFrame
-        DataFrame with new 'extraction_time' column (rounded to model frequency)
+        Subsampled DataFrame with:
+        - 'base_time': Subsampled track times (original)
+        - 'extraction_time': Aligned model times (for extraction)
     """
-    print(f"Aligning track times to model frequency: {model_freq}")
+    print(f"\nSubsampling tracks and aligning to model frequency: {model_freq}")
     sys.stdout.flush()
     
     # Parse frequency (e.g., '3H' → 3 hours)
     freq_hours = int(model_freq.rstrip('H'))
     
-    # Keep original time
-    df['original_base_time'] = df['base_time']
+    # Determine column names (backwards compatibility)
+    track_col = 'tracks' if 'tracks' in df.columns else 'track_id'
+    time_col = 'times' if 'times' in df.columns else 'time_idx'
     
-    # Round to nearest model output time
-    # Convert to timestamp, round down to nearest freq_hours, then add half freq to round nearest
-    base_times = pd.to_datetime(df['base_time'])
+    original_count = len(df)
     
-    # Method: Round to nearest multiple of freq_hours
-    # 01:00 with 3H freq → 00:00 (nearest)
-    # 02:00 with 3H freq → 03:00 (nearest)
-    # 04:00 with 3H freq → 03:00 (nearest)
-    # 05:00 with 3H freq → 06:00 (nearest)
-    
-    df['extraction_time'] = base_times.dt.round(f'{freq_hours}H')
-    
-    # Report statistics
-    print(f"Original unique times: {base_times.nunique()}")
-    print(f"Extraction unique times: {df['extraction_time'].nunique()}")
-    print(f"All {len(df)} track time steps preserved")
+    # Step 1: Subsample each track to model frequency from its start
+    print(f"  Step 1: Subsampling tracks every {freq_hours} hours from initiation...")
     sys.stdout.flush()
     
-    return df
+    subsampled_rows = []
+    for track_id, track_group in df.groupby(track_col):
+        # Sort by time index
+        track_group = track_group.sort_values(time_col).reset_index(drop=True)
+        
+        # Keep every Nth row (where N = freq_hours for hourly data)
+        # This preserves initiation (index 0) and samples every freq_hours steps
+        # For 3H freq on hourly data: keep indices 0, 3, 6, 9, ...
+        indices_to_keep = track_group.index[::freq_hours]
+        subsampled_rows.append(track_group.loc[indices_to_keep])
+    
+    df_subsampled = pd.concat(subsampled_rows, ignore_index=True)
+    subsampled_count = len(df_subsampled)
+    
+    print(f"  Subsampled from {original_count} to {subsampled_count} time points")
+    print(f"  Reduction: {(1 - subsampled_count/original_count)*100:.1f}%")
+    sys.stdout.flush()
+    
+    # Step 2: Align subsampled times to nearest model output times
+    print(f"  Step 2: Aligning to nearest model output times...")
+    sys.stdout.flush()
+    
+    base_times = pd.to_datetime(df_subsampled['base_time'])
+    
+    # Round to nearest model time (00:00, 03:00, 06:00, etc.)
+    # Strategy: Convert to total hours since epoch, round to nearest multiple of freq_hours
+    # 04:00 → 03:00 (nearest)
+    # 07:00 → 06:00 (nearest)
+    
+    # Get timestamp in nanoseconds, convert to hours
+    hours_since_epoch = base_times.astype('int64') / (3600 * 1e9)
+    
+    # Round to nearest multiple of freq_hours
+    rounded_hours = np.round(hours_since_epoch / freq_hours) * freq_hours
+    
+    # Convert back to datetime
+    df_subsampled['extraction_time'] = pd.to_datetime(rounded_hours * 3600 * 1e9, unit='ns')
+    
+    # Report alignment statistics
+    unique_base = base_times.nunique()
+    unique_extraction = df_subsampled['extraction_time'].nunique()
+    print(f"  Unique subsampled times: {unique_base}")
+    print(f"  Unique extraction times: {unique_extraction}")
+    print(f"  Final track-time combinations: {len(df_subsampled)}")
+    sys.stdout.flush()
+    
+    return df_subsampled
