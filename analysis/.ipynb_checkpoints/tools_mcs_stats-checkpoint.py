@@ -832,8 +832,8 @@ def plot_multi_variable_all_comparison(variable_dfs_dict,
         axes_flat = np.array([axes])
     
     # Define line styles and markers for radii
-    radius_styles = {radii[0]: '-',} # radii[1]: '--'}  # solid for first radius, dashed for second
-    radius_markers = {radii[0]: 'o', radii[1]: 's'}  # circle for first radius, square for second
+    radius_styles =  '-' # radii[1]: '--'}  # solid for first radius, dashed for second
+    radius_markers = 'o'# radii[1]: 's'}  # circle for first radius, square for second
     
     # # If we have more than 2 radii, extend the styles
     # if len(radii) > 2:
@@ -962,4 +962,167 @@ def plot_multi_variable_all_comparison(variable_dfs_dict,
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.12)  # Make room for the legend
     
+    return fig
+
+
+def plot_single_radius_comparison(variable_dfs_dict,
+                                  radius=2.0,
+                                  nrows=None, ncols=None, figsize=None,
+                                  time_range=(-24, 24), xlimi=-24, xlimf=24,
+                                  variable_units=None, share_y=False, fontsize=10,suptitle=False):
+    """
+    Plot the evolution of multiple variables for a single radius, comparing multiple models.
+    Each subplot shows one variable with all available models that have that variable.
+    X-axis labels are only shown on the bottom row of subplots.
+
+    Parameters:
+    -----------
+    variable_dfs_dict : dict
+        Dictionary where keys are model names and values are dictionaries mapping
+        variable names to their evolution DataFrames.
+    radius : float, default=2.0
+        The specific radius in degrees to plot.
+    nrows, ncols : int, optional
+        Number of rows and columns in the subplot grid. Calculated automatically if not specified.
+    figsize : tuple, optional
+        Figure size (width, height) in inches.
+    time_range : tuple, default=(-24, 24)
+        Time range to plot (hours relative to initiation).
+    variable_units : dict, optional
+        Dictionary mapping variable names to their units for y-axis labels.
+    share_y : bool, default=False
+        Whether to share y-axis limits across all subplots.
+    fontsize : int, default=10
+        Base font size for plot elements.
+
+    Returns:
+    --------
+    matplotlib.figure.Figure
+        Figure object containing the multi-panel comparison plot.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from matplotlib.lines import Line2D
+
+    # Define colors for each model
+    model_colors = {
+        'ERA5': 'k',
+        'ICON': '#ff7f0e',
+        'SCREAM': '#2ca02c',
+        'UM': 'salmon',
+        'IFS':"steelblue", "NICAM":"mediumpurple"
+    }
+
+    # Collect all unique variables across all models
+    all_variables = sorted({
+        var for model_vars in variable_dfs_dict.values() for var in model_vars.keys()
+    })
+    
+    n_vars = len(all_variables)
+    if n_vars == 0:
+        raise ValueError("No variables found in any model")
+
+    # Determine grid dimensions
+    if nrows is None and ncols is None:
+        ncols = int(np.ceil(np.sqrt(n_vars)))
+        nrows = int(np.ceil(n_vars / ncols))
+    elif nrows is None:
+        nrows = int(np.ceil(n_vars / ncols))
+    elif ncols is None:
+        ncols = int(np.ceil(n_vars / nrows))
+
+    # Calculate figure size if not provided
+    if figsize is None:
+        figsize = (ncols * 4, nrows * 3)
+
+    # Create figure and axes grid
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize, sharex=True, sharey=share_y,
+                               constrained_layout=True)
+    axes_flat = axes.flatten() if n_vars > 1 else np.array([axes])
+
+    # Plot each variable in its own subplot
+    models_plotted = set()
+
+    for i, var_name in enumerate(all_variables):
+        if i >= len(axes_flat):
+            print(f"Warning: More variables than subplot space. Skipping {var_name}.")
+            continue
+        
+        ax = axes_flat[i]
+        variable_has_data = False
+
+        # Process each model for this variable
+        for model_name, model_vars in variable_dfs_dict.items():
+            if var_name not in model_vars:
+                continue
+
+            df = model_vars[var_name]
+
+            # Filter data by time range and the single specified radius
+            df_filtered = df[
+                (df['time_offset_hours'] >= time_range[0]) &
+                (df['time_offset_hours'] <= time_range[1]) &
+                (df['radius'] == radius)
+            ].copy()
+
+            if not df_filtered.empty:
+                variable_has_data = True
+                models_plotted.add(model_name)
+                
+                df_filtered.sort_values('time_offset_hours', inplace=True)
+                
+                model_color = model_colors.get(model_name, 'black')
+                
+                ax.plot(df_filtered['time_offset_hours'], df_filtered['mean'],
+                        linestyle='-',
+                        marker='o',
+                        color=model_color,
+                        linewidth=2,
+                        markersize=4,
+                        alpha=0.8,
+                        label=model_name)
+
+        # Format the subplot only if it has data
+        if variable_has_data:
+            ax.axvline(x=0, color='gray', linestyle=':', alpha=0.7)
+            
+            # --- MODIFICATION START ---
+            # Only add xlabel to subplots in the bottom row
+            # The starting index for the last row is (nrows - 1) * ncols
+            if i >= (nrows - 1) * ncols:
+                ax.set_xlabel('Time Relative to MCS Initiation (hours)', fontsize=fontsize)
+            # --- MODIFICATION END ---
+            
+            ax.set_xlim(xlimi, xlimf)
+            ylabel = f'{var_name} ({variable_units[var_name]})' if variable_units and var_name in variable_units else var_name
+            ax.set_ylabel(ylabel, fontsize=fontsize)
+            ax.set_title('')
+            # ax.set_title(var_name, fontsize=fontsize + 1)
+            ax.grid(True, alpha=0.3)
+            ax.tick_params(axis='both', which='major', labelsize=fontsize - 2)
+        else:
+            ax.set_visible(False)
+
+    # Hide any unused subplots
+    for i in range(n_vars, len(axes_flat)):
+        axes_flat[i].set_visible(False)
+
+    # Create a main title for the entire figure
+    model_names_str = ' vs '.join(sorted(models_plotted))
+    if suptitle:
+        fig.suptitle(f'Environmental Variable Evolution at {radius}° (~{radius*111:.0f} km) Radius: {model_names_str}',
+                 fontsize=fontsize + 1, y=0.98)
+
+    # Create a comprehensive legend at the bottom
+    legend_elements = [
+        Line2D([0], [0], color=model_colors.get(name, 'black'), linewidth=2, label=name)
+        for name in sorted(models_plotted)
+    ]
+    legend_elements.append(Line2D([0], [0], color='gray', linestyle=':', label='MCS Initiation'))
+
+    fig.legend(handles=legend_elements, loc='lower center',
+               bbox_to_anchor=(0.5, -0.01), ncol=min(len(legend_elements), 5), fontsize=fontsize)
+    
+    fig.tight_layout(rect=[0, 0.05, 1, 0.98])
+
     return fig
