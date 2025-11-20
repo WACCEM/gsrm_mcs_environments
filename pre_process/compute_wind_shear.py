@@ -155,25 +155,29 @@ def apply_model_fixes(ds, model_name):
         print("  IFS model fixes complete")
         sys.stdout.flush()
     
-    # ===== FIX FOR NICAM MODEL =====
-    elif 'lev' in ds.dims:
-        print("  Detected NICAM model: Renaming 'lev' → 'pressure' dimension...")
-        sys.stdout.flush()
+    # ===== FIX FOR PRESSURE DIMENSION NAMES =====
+    # Standardize pressure dimension to 'pressure'
+    if 'lev' in ds.dims:
         ds = ds.rename({'lev': 'pressure'})
-        print("  NICAM model fix complete")
+        print("  Renamed dimension: 'lev' → 'pressure'")
         sys.stdout.flush()
     
-    # ===== FIX FOR SCREAM MODEL =====
-    elif 'level' in ds.dims:
-        print("  Detected SCREAM model: Renaming 'level' → 'pressure' dimension...")
-        sys.stdout.flush()
-        ds = ds.rename({'level': 'pressure'})
-        # SCREAM stores pressure values in 'lev' coordinate
-        if 'lev' in ds.coords:
-            ds = ds.assign_coords(pressure=('pressure', ds.lev.values))
-            ds = ds.drop_vars('lev')
-        print("  SCREAM model fix complete")
-        sys.stdout.flush()
+    # Some models use 'level' instead of 'pressure'
+    if 'level' in ds.dims:
+        # For SCREAM: 'level' dimension needs coordinate from 'lev' variable
+        if 'scream' in model_name.lower():
+            ds = ds.rename({'level': 'pressure'})
+            print("  Renamed dimension: 'level' → 'pressure' (SCREAM)")
+            if 'lev' in ds.data_vars or 'lev' in ds.coords:
+                ds = ds.assign_coords(pressure=('pressure', ds.lev.values))
+                ds = ds.drop_vars('lev')
+                print("  Assigned pressure coordinate from 'lev' variable")
+            sys.stdout.flush()
+        # For ERA5 and other models: 'level' is already the pressure coordinate
+        else:
+            ds = ds.rename({'level': 'pressure'})
+            print("  Renamed dimension: 'level' → 'pressure'")
+            sys.stdout.flush()
     
     return ds
 
@@ -348,7 +352,11 @@ def process_month_data(ds_month_year, year_val, month, original_history, new_his
         return
     
     output_ds = xr.Dataset(output_vars)
-    out_file = os.path.join(out_dir, f"{model_name}_wind_shear_hp{zoom}_{time_res}.{year_val}{str(month).zfill(2)}.nc")
+    
+    # Handle None values in time_res for NetCDF serialization
+    time_res_str = time_res if time_res is not None else "N/A"
+    
+    out_file = os.path.join(out_dir, f"{model_name}_wind_shear_hp{zoom}_{time_res_str}.{year_val}{str(month).zfill(2)}.nc")
     
     # Handle existing files: append new variables if file exists
     if os.path.exists(out_file):
@@ -365,7 +373,7 @@ def process_month_data(ds_month_year, year_val, month, original_history, new_his
                 v.attrs.update({
                     "history": f"{new_history}; {original_history}",
                     "source_model": model_name,
-                    "time_resolution": time_res,
+                    "time_resolution": time_res_str,
                     "healpix_zoom": zoom,
                     "processing_script": "compute_wind_shear.py"
                 })
@@ -378,7 +386,7 @@ def process_month_data(ds_month_year, year_val, month, original_history, new_his
         output_ds.attrs.update({
             "history": f"{new_history}; {original_history}",
             "source_model": model_name,
-            "time_resolution": time_res,
+            "time_resolution": time_res_str,
             "healpix_zoom": zoom,
             "processing_script": "compute_wind_shear.py",
             "description": "Wind shear computed between pressure levels"
@@ -399,17 +407,21 @@ def main():
     # Input/output options
     parser.add_argument('--catalog_url', 
                         default="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml",
-                        help='URL of the intake catalog')
+                        help='URL of the intake catalog (not used with --zarr_path)')
     parser.add_argument('--current_location', default="NERSC", 
-                        help='Current location in catalog (NERSC or online)')
+                        help='Current location in catalog (NERSC or online) (not used with --zarr_path)')
     parser.add_argument('--catalog_model', default="scream_ne120", 
-                        help='Model name in the catalog')
+                        help='Model name in the catalog (not used with --zarr_path)')
     parser.add_argument('--model_time_freq', default=None,
                         help='Model output time frequency (e.g., "1H", "3H", "6H") - used to subsample track time steps')
     parser.add_argument('--catalog_params', default='{"zoom": 8}', 
-                        help='JSON string of catalog parameters')
-    # parser.add_argument('--zoom', type=int, default=8, 
-    #                     help='HEALPix zoom level')
+                        help='JSON string of catalog parameters (not used with --zarr_path)')
+    parser.add_argument('--zarr_path', default=None,
+                        help='Path to zarr file for direct loading (e.g., ERA5). '
+                             'If provided, catalog arguments are ignored. '
+                             'Example: /pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr')
+    parser.add_argument('--zarr_model_name', default='era5',
+                        help='Model name for zarr files (used for output naming and model-specific fixes). Default: era5')
     parser.add_argument('--output_dir', required=True, 
                         help='Output directory for results')
     
@@ -435,11 +447,11 @@ def main():
     print("=" * 70)
     sys.stdout.flush()
     
-    # Load catalog and dataset
-    print("\nLoading catalog and dataset...")
-    sys.stdout.flush()
-
-    # Parse catalog parameters
+    # =================================================================
+    # LOAD DATASET: Either from zarr file or catalog
+    # =================================================================
+    
+    # Parse catalog parameters (for zoom level)
     try:
         catalog_params = json.loads(args.catalog_params)
         zoom_level = catalog_params.get('zoom', 'unknown')
@@ -447,56 +459,81 @@ def main():
         catalog_params = {'zoom': 8}
         zoom_level = 8
     
-    # Open catalog and get dataset
-    print(f"Opening catalog from {args.catalog_url}")
-    sys.stdout.flush()
-    cat = intake.open_catalog(args.catalog_url)[args.current_location]
+    if args.zarr_path:
+        # Direct zarr loading (e.g., ERA5, observations)
+        print(f"\nLoading dataset from zarr file: {args.zarr_path}")
+        sys.stdout.flush()
+        
+        ds = xr.open_dataset(args.zarr_path, engine='zarr')
+        ds = ds.pipe(egh.attach_coords, signed_lon=True)
+        
+        # Convert time coordinate
+        ds['time'] = xr.decode_cf(ds).indexes['time']
+        
+        # Apply model-specific fixes
+        model_name = args.zarr_model_name
+        ds = apply_model_fixes(ds, model_name)
+        
+        print(f"Loaded zarr dataset: {model_name}")
+        print(f"Time range: {ds.time.values[0]} to {ds.time.values[-1]}")
+        print(f"Available variables: {list(ds.data_vars)}")
+        sys.stdout.flush()
+        
+    else:
+        # Catalog loading (e.g., SCREAM, ICON, IFS, NICAM, UM)
+        print("\nLoading catalog and dataset...")
+        sys.stdout.flush()
+        
+        # Open catalog and get dataset
+        print(f"Opening catalog from {args.catalog_url}")
+        sys.stdout.flush()
+        cat = intake.open_catalog(args.catalog_url)[args.current_location]
 
-    print(f"Loading dataset {args.catalog_model}...")
-    sys.stdout.flush()
+        print(f"Loading dataset {args.catalog_model}...")
+        sys.stdout.flush()
 
-    # Add retry logic for dataset opening (handles intermittent 502 errors for IFS)
-    max_retries = 10
-    retry_delay = 10  # seconds
-    
-    for attempt in range(max_retries):
-        try:
-            ds = cat[args.catalog_model](**catalog_params).to_dask().pipe(
-                egh.attach_coords, signed_lon=True
-            )
-            # ds = ds.assign_coords(time=convert_time(ds.time.values))
-            # Resample IMMEDIATELY for IFS
-            if args.catalog_model.startswith('ifs'):
-                print(f"Resampling IFS data from hourly to {args.model_time_freq}...")
-                ds = ds.resample(time=args.model_time_freq).first()
-                print(f"After resampling: {len(ds.time)} time steps")
+        # Add retry logic for dataset opening (handles intermittent 502 errors for IFS)
+        max_retries = 10
+        retry_delay = 10  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                ds = cat[args.catalog_model](**catalog_params).to_dask().pipe(
+                    egh.attach_coords, signed_lon=True
+                )
+                
+                # Resample IMMEDIATELY for IFS
+                if args.catalog_model.startswith('ifs'):
+                    print(f"Resampling IFS data from hourly to {args.model_time_freq}...")
+                    ds = ds.resample(time=args.model_time_freq).first()
+                    print(f"After resampling: {len(ds.time)} time steps")
 
-            print(f"Dataset loaded successfully")
-            sys.stdout.flush()
-            break
-        except Exception as e:
-            if attempt < max_retries - 1:
-                print(f"WARNING: Failed to load dataset (attempt {attempt + 1}/{max_retries}): {e}")
-                print(f"Retrying in {retry_delay} seconds...")
+                print(f"Dataset loaded successfully")
                 sys.stdout.flush()
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
-            else:
-                print(f"ERROR: Failed to load dataset after {max_retries} attempts: {e}")
-                sys.stdout.flush()
-                raise
-    
-    # Convert time coordinate
-    ds['time'] = xr.decode_cf(ds).indexes['time']
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"WARNING: Failed to load dataset (attempt {attempt + 1}/{max_retries}): {e}")
+                    print(f"Retrying in {retry_delay} seconds...")
+                    sys.stdout.flush()
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    print(f"ERROR: Failed to load dataset after {max_retries} attempts: {e}")
+                    sys.stdout.flush()
+                    raise
+        
+        # Convert time coordinate
+        ds['time'] = xr.decode_cf(ds).indexes['time']
+        
+        # Apply model-specific fixes
+        model_name = args.catalog_model
+        ds = apply_model_fixes(ds, model_name)
 
     
     print(f"Dataset loaded. Dimensions: {dict(ds.dims)}")
     print(f"Available variables: {list(ds.data_vars)}")
     sys.stdout.flush()
-    
-    # Apply model-specific fixes
-    ds = apply_model_fixes(ds, args.catalog_model)
-    
     
     # Filter by date range if provided
     if args.start_date and args.end_date:
@@ -520,7 +557,7 @@ def main():
             process_month_data(
                 ds_month_year, year_val, month, 
                 original_history, new_history,
-                args.output_dir, args.catalog_model, 
+                args.output_dir, model_name, 
                 args.model_time_freq, zoom_level
             )
     
