@@ -31,6 +31,11 @@ import sys
 # Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+# Import utility functions
+from env_extraction_utils import (
+    apply_model_fixes, load_land_fraction_summary
+)
+
 def convert_time(time_array):
     """Convert cftime to standard datetime64"""
     if hasattr(time_array[0], 'year'):
@@ -962,13 +967,19 @@ def main():
     # Input/output options
     parser.add_argument('--catalog_url', 
                         default="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml",
-                        help='URL of the intake catalog')
+                        help='URL of the intake catalog (not used with --zarr_path)')
     parser.add_argument('--current_location', default="NERSC", 
-                        help='Current location in catalog')
+                        help='Current location in catalog (not used with --zarr_path)')
     parser.add_argument('--catalog_model', default="scream_ne120", 
-                        help='Model name in the catalog')
+                        help='Model name in the catalog (not used with --zarr_path)')
     parser.add_argument('--catalog_params', default='{"zoom": 8}', 
-                        help='JSON string of catalog parameters')
+                        help='JSON string of catalog parameters (not used with --zarr_path)')
+    parser.add_argument('--zarr_path', default=None,
+                        help='Path to zarr file for direct loading (e.g., ERA5). '
+                             'If provided, catalog arguments are ignored. '
+                             'Example: /pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr')
+    parser.add_argument('--zarr_model_name', default='era5',
+                        help='Model name for zarr files (used for output naming and model-specific fixes). Default: era5')
     parser.add_argument('--trackfile', required=True, 
                         help='Path to MCS track file')
     parser.add_argument('--output_dir', required=True, 
@@ -1146,118 +1157,145 @@ def main():
             args.land_threshold
         )
     
-    # Open catalog and get dataset
-    print(f"Opening catalog from {args.catalog_url}")
-    sys.stdout.flush()
-    cat = intake.open_catalog(args.catalog_url)[args.current_location]
-    
-    print(f"Loading dataset {args.catalog_model}...")
-    sys.stdout.flush()
-    
-    # Add retry logic for dataset opening (handles intermittent 502 errors)
-    max_retries = 10
-    retry_delay = 10  # seconds
-    
-    for attempt in range(max_retries):
-        try:
-            ds = cat[args.catalog_model](**catalog_params).to_dask().pipe(
-                egh.attach_coords, signed_lon=True
-            )
-            ds = ds.assign_coords(time=convert_time(ds.time.values))
-            # Resample IMMEDIATELY for IFS
-            if args.catalog_model.startswith('ifs'):
-                print(f"Resampling IFS data from hourly to {args.model_time_freq}...")
-                ds = ds.resample(time=args.model_time_freq).first()
-                print(f"After resampling: {len(ds.time)} time steps")
-
-            print(f"Dataset loaded successfully")
-            sys.stdout.flush()
-            break
-        except Exception as e:
-            if attempt < max_retries - 1:
-                print(f"WARNING: Failed to load dataset (attempt {attempt + 1}/{max_retries}): {e}")
-                print(f"Retrying in {retry_delay} seconds...")
-                sys.stdout.flush()
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
-            else:
-                print(f"ERROR: Failed to load dataset after {max_retries} attempts: {e}")
-                sys.stdout.flush()
-                raise
-    
-    # ===== FIX FOR IFS MODEL: Rename dimensions and variables =====
-    # IFS has both 'value' and 'cell' dimensions, but variables use 'value'
-    # Also, IFS uses 'level' instead of 'pressure' for vertical coordinate
-    if 'value' in ds.dims and 'cell' in ds.dims:
-        print("Detected IFS model: Applying dimension and variable name fixes...")
+    # =================================================================
+    # LOAD DATASET: Either from zarr file or catalog
+    # =================================================================
+    if args.zarr_path:
+        # Direct zarr loading (e.g., ERA5, observations)
+        print(f"Loading dataset from zarr file: {args.zarr_path}")
         sys.stdout.flush()
         
-        # 1. Swap 'value' dimension to 'cell'
-        # IFS has both 'value' (no coordinate) and 'cell' (with coordinate) dimensions
-        # Variables are indexed by 'value', but we need them indexed by 'cell'
-        # Strategy: save cell values, drop old cell dimension, rename value→cell, reassign coordinate
-        cell_values = ds.coords['cell'].values
-        ds = ds.drop_dims('cell')
-        ds = ds.rename({'value': 'cell'})
-        ds = ds.assign_coords({'cell': cell_values})
+        ds = xr.open_dataset(args.zarr_path, engine='zarr')
         ds = ds.pipe(egh.attach_coords, signed_lon=True)
-        # ds = ds.resample(time="3H").first()
-        print("Swapped 'value' → 'cell' dimension")
+        ds = ds.assign_coords(time=convert_time(ds.time.values))
         
-        # 2. Rename 'level' to 'pressure' if it exists
-        if 'level' in ds.dims:
-            ds = ds.rename({'level': 'pressure'})
-            print("Renamed 'level' → 'pressure' dimension")
+        # Apply model-specific fixes
+        model_name = args.zarr_model_name
+        ds = apply_model_fixes(ds, model_name)
         
-        # 3. Rename IFS variable names to standard names (only if they exist)
-        var_name_mapping = {
-            't': 'ta',      # temperature
-            'tcwv': 'prw',   # total column water vapor
-            'w': 'omega',      # vertical velocity
-            'q': 'hus',    # specific humidity
-            'r': 'hur',     # relative humidity
-            '2t': 'tas',     # 2m temperature
-            '2d': 'tdas',   # 2m dew point temperature
-            '10u': 'uas',   # 10m zonal wind
-            '10v': 'vas',   # 10m meridional wind
-            'slhf': 'hflsd', # surface latent heat flux
-            'sshf': 'hflsu', # surface sensible heat flux
-            'sp': 'ps',     # surface pressure
-            'tcc': 'clt',   # total cloud cover
+        print(f"Loaded zarr dataset: {model_name}")
+        print(f"Time range: {ds.time.values[0]} to {ds.time.values[-1]}")
+        print(f"Available variables: {list(ds.data_vars)}")
+        sys.stdout.flush()
+        
+    else:
+        # Catalog loading (e.g., SCREAM, ICON, IFS, NICAM, UM)
+        print(f"Opening catalog from {args.catalog_url}")
+        sys.stdout.flush()
+        cat = intake.open_catalog(args.catalog_url)[args.current_location]
+        
+        print(f"Loading dataset {args.catalog_model}...")
+        sys.stdout.flush()
+        
+        # Add retry logic for dataset opening (handles intermittent 502 errors)
+        max_retries = 10
+        retry_delay = 10  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                ds = cat[args.catalog_model](**catalog_params).to_dask().pipe(
+                    egh.attach_coords, signed_lon=True
+                )
+                ds = ds.assign_coords(time=convert_time(ds.time.values))
+                
+                # Apply model-specific fixes
+                model_name = args.catalog_model
+                ds = apply_model_fixes(ds, model_name)
+                
+                # Resample IMMEDIATELY for IFS
+                if args.catalog_model.startswith('ifs'):
+                    print(f"Resampling IFS data from hourly to {args.model_time_freq}...")
+                    ds = ds.resample(time=args.model_time_freq).first()
+                    print(f"After resampling: {len(ds.time)} time steps")
 
-        }
-        
-        vars_to_rename = {}
-        for old_name, new_name in var_name_mapping.items():
-            if old_name in ds.data_vars or old_name in ds.coords:
-                vars_to_rename[old_name] = new_name
-        
-        if vars_to_rename:
-            ds = ds.rename(vars_to_rename)
-            print(f"Renamed variables: {vars_to_rename}")
-        
-        print("IFS model fixes complete")
-        sys.stdout.flush()
+                print(f"Dataset loaded successfully")
+                sys.stdout.flush()
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"WARNING: Failed to load dataset (attempt {attempt + 1}/{max_retries}): {e}")
+                    print(f"Retrying in {retry_delay} seconds...")
+                    sys.stdout.flush()
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    print(f"ERROR: Failed to load dataset after {max_retries} attempts: {e}")
+                    sys.stdout.flush()
+                    raise
     
-    # ===== FIX FOR NICAM MODEL: Rename dimensions and variables =====
-    # NICAM uses 'lev' instead of 'pressure' for vertical coordinate
-    if 'lev' in ds.dims:
-        print("Detected NICAM model: Renaming 'lev' → 'pressure' dimension...")
-        sys.stdout.flush()
-        ds = ds.rename({'lev': 'pressure'})
-        print("NICAM model fix complete")
-        sys.stdout.flush()
+    # # ===== FIX FOR IFS MODEL: Rename dimensions and variables =====
+    # # IFS has both 'value' and 'cell' dimensions, but variables use 'value'
+    # # Also, IFS uses 'level' instead of 'pressure' for vertical coordinate
+    # if 'value' in ds.dims and 'cell' in ds.dims:
+    #     print("Detected IFS model: Applying dimension and variable name fixes...")
+    #     sys.stdout.flush()
+        
+    #     # 1. Swap 'value' dimension to 'cell'
+    #     # IFS has both 'value' (no coordinate) and 'cell' (with coordinate) dimensions
+    #     # Variables are indexed by 'value', but we need them indexed by 'cell'
+    #     # Strategy: save cell values, drop old cell dimension, rename value→cell, reassign coordinate
+    #     cell_values = ds.coords['cell'].values
+    #     ds = ds.drop_dims('cell')
+    #     ds = ds.rename({'value': 'cell'})
+    #     ds = ds.assign_coords({'cell': cell_values})
+    #     ds = ds.pipe(egh.attach_coords, signed_lon=True)
+    #     # ds = ds.resample(time="3H").first()
+    #     print("Swapped 'value' → 'cell' dimension")
+        
+    #     # 2. Rename 'level' to 'pressure' if it exists
+    #     if 'level' in ds.dims:
+    #         ds = ds.rename({'level': 'pressure'})
+    #         print("Renamed 'level' → 'pressure' dimension")
+        
+    #     # 3. Rename IFS variable names to standard names (only if they exist)
+    #     var_name_mapping = {
+    #         't': 'ta',      # temperature
+    #         'tcwv': 'prw',   # total column water vapor
+    #         'w': 'omega',      # vertical velocity
+    #         'q': 'hus',    # specific humidity
+    #         'r': 'hur',     # relative humidity
+    #         '2t': 'tas',     # 2m temperature
+    #         '2d': 'tdas',   # 2m dew point temperature
+    #         '10u': 'uas',   # 10m zonal wind
+    #         '10v': 'vas',   # 10m meridional wind
+    #         'slhf': 'hflsd', # surface latent heat flux
+    #         'sshf': 'hflsu', # surface sensible heat flux
+    #         'sp': 'ps',     # surface pressure
+    #         'tcc': 'clt',   # total cloud cover
+
+    #     }
+        
+    #     vars_to_rename = {}
+    #     for old_name, new_name in var_name_mapping.items():
+    #         if old_name in ds.data_vars or old_name in ds.coords:
+    #             vars_to_rename[old_name] = new_name
+        
+    #     if vars_to_rename:
+    #         ds = ds.rename(vars_to_rename)
+    #         print(f"Renamed variables: {vars_to_rename}")
+        
+    #     print("IFS model fixes complete")
+    #     sys.stdout.flush()
     
-    # ===== FIX FOR SCREAM MODEL: Rename dimensions and variables =====
-    # SCREAM uses 'level' instead of 'pressure' for vertical coordinate and pressure values are in 'lev' coordinate
-    if 'level' in ds.dims:
-        print("Detected SCREAM model: Renaming 'level' → 'pressure' dimension...")
-        sys.stdout.flush()
-        ds = ds.rename({'level': 'pressure'})
-        ds = ds.assign_coords(pressure=('pressure', ds.lev.values))
-        ds = ds.drop_vars('lev')
-        print("SCREAM model fix complete")
-        sys.stdout.flush()
+    # # ===== FIX FOR NICAM MODEL: Rename dimensions and variables =====
+    # # NICAM uses 'lev' instead of 'pressure' for vertical coordinate
+    # if 'lev' in ds.dims:
+    #     print("Detected NICAM model: Renaming 'lev' → 'pressure' dimension...")
+    #     sys.stdout.flush()
+    #     ds = ds.rename({'lev': 'pressure'})
+    #     print("NICAM model fix complete")
+    #     sys.stdout.flush()
+    
+    # # ===== FIX FOR SCREAM MODEL: Rename dimensions and variables =====
+    # # SCREAM uses 'level' instead of 'pressure' for vertical coordinate and pressure values are in 'lev' coordinate
+    # if 'level' in ds.dims:
+    #     print("Detected SCREAM model: Renaming 'level' → 'pressure' dimension...")
+    #     sys.stdout.flush()
+    #     ds = ds.rename({'level': 'pressure'})
+    #     ds = ds.assign_coords(pressure=('pressure', ds.lev.values))
+    #     ds = ds.drop_vars('lev')
+    #     print("SCREAM model fix complete")
+    #     sys.stdout.flush()
     
     # Get HEALPix grid
     print("Computing HEALPix grid...")

@@ -35,7 +35,8 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 from env_extraction_utils import (
     convert_time, parse_pressure_levels, normalize_pressure_levels,
     convert_w_to_omega, convert_omega_to_w, compute_surface_wind_speed,
-    apply_model_fixes, subsample_tracks_by_frequency, load_land_fraction_summary
+    compute_relative_humidity, apply_model_fixes, subsample_tracks_by_frequency, 
+    load_land_fraction_summary
 )
 
 def load_precomputed_variable(precomputed_dir, variable_name, model_name, zoom_level, 
@@ -539,13 +540,19 @@ def main():
     # Input/output options
     parser.add_argument('--catalog_url', 
                         default="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml",
-                        help='URL of the intake catalog')
+                        help='URL of the intake catalog (not used with --zarr_path)')
     parser.add_argument('--current_location', default="NERSC", 
-                        help='Current location in catalog')
+                        help='Current location in catalog (not used with --zarr_path)')
     parser.add_argument('--catalog_model', default="scream_ne120", 
-                        help='Model name in the catalog')
+                        help='Model name in the catalog (not used with --zarr_path)')
     parser.add_argument('--catalog_params', default='{"zoom": 8}', 
-                        help='JSON string of catalog parameters')
+                        help='JSON string of catalog parameters (not used with --zarr_path)')
+    parser.add_argument('--zarr_path', default=None,
+                        help='Path to zarr file for direct loading (e.g., ERA5). '
+                             'If provided, catalog arguments are ignored. '
+                             'Example: /pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr')
+    parser.add_argument('--zarr_model_name', default='era5',
+                        help='Model name for zarr files (used for output naming and model-specific fixes). Default: era5')
     parser.add_argument('--trackfile', required=True, 
                         help='Path to MCS track file')
     parser.add_argument('--output_dir', required=True, 
@@ -719,26 +726,49 @@ def main():
             args.land_threshold
         )
     
-    # Open catalog and get dataset
-    print(f"Opening catalog from {args.catalog_url}")
-    sys.stdout.flush()
-    cat = intake.open_catalog(args.catalog_url)[args.current_location]
-    
-    print(f"Loading dataset {args.catalog_model}...")
-    sys.stdout.flush()
-    ds = cat[args.catalog_model](**catalog_params).to_dask().pipe(
-        egh.attach_coords, signed_lon=True
-    )
-    ds = ds.assign_coords(time=convert_time(ds.time.values))
+    # =================================================================
+    # LOAD DATASET: Either from zarr file or catalog
+    # =================================================================
+    if args.zarr_path:
+        # Direct zarr loading (e.g., ERA5, observations)
+        print(f"Loading dataset from zarr file: {args.zarr_path}")
+        sys.stdout.flush()
+        
+        ds = xr.open_dataset(args.zarr_path, engine='zarr')
+        ds = ds.pipe(egh.attach_coords, signed_lon=True)
+        # ds = ds.assign_coords(time=convert_time(ds.time.values))
+        
+        # Apply model-specific fixes
+        model_name = args.zarr_model_name
+        ds = apply_model_fixes(ds, model_name)
+        
+        print(f"Loaded zarr dataset: {model_name}")
+        print(f"Time range: {ds.time.values[0]} to {ds.time.values[-1]}")
+        print(f"Available variables: {list(ds.data_vars)}")
+        sys.stdout.flush()
+        
+    else:
+        # Catalog loading (e.g., SCREAM, ICON, IFS, NICAM, UM)
+        print(f"Opening catalog from {args.catalog_url}")
+        sys.stdout.flush()
+        cat = intake.open_catalog(args.catalog_url)[args.current_location]
+        
+        print(f"Loading dataset {args.catalog_model}...")
+        sys.stdout.flush()
+        ds = cat[args.catalog_model](**catalog_params).to_dask().pipe(
+            egh.attach_coords, signed_lon=True
+        )
+        ds = ds.assign_coords(time=convert_time(ds.time.values))
 
-    # Apply model-specific fixes
-    ds = apply_model_fixes(ds, args.catalog_model)
+        # Apply model-specific fixes
+        model_name = args.catalog_model
+        ds = apply_model_fixes(ds, model_name)
 
-    # Resample IMMEDIATELY for IFS
-    if args.catalog_model.startswith('ifs'):
-        print(f"Resampling IFS data from hourly to {args.model_time_freq}...")
-        ds = ds.resample(time=args.model_time_freq).first()
-        print(f"After resampling: {len(ds.time)} time steps")
+        # Resample IMMEDIATELY for IFS
+        if args.catalog_model.startswith('ifs'):
+            print(f"Resampling IFS data from hourly to {args.model_time_freq}...")
+            ds = ds.resample(time=args.model_time_freq).first()
+            print(f"After resampling: {len(ds.time)} time steps")
     
     # Get HEALPix grid
     print("Computing HEALPix grid...")
@@ -948,9 +978,56 @@ def main():
                 use_precomputed = False
                 
             except KeyError:
-                print(f"ERROR: Variable '{variable_name}' not found in dataset")
-                print(f"Skipping {variable_name}")
-                continue
+                # Special handling for 'hur' - compute if not available
+                if variable_name == 'hur':
+                    print(f"Variable '{variable_name}' not found in dataset")
+                    print(f"Attempting to compute relative humidity from pressure, temperature, and specific humidity...")
+                    sys.stdout.flush()
+                    
+                    try:
+                        # Compute relative humidity
+                        variable_data = compute_relative_humidity(ds)
+                        
+                        # Handle pressure level selection if requested
+                        if 'pressure' in variable_data.dims and pressure_levels is not None:
+                            is_3d_variable = True
+                            
+                            if args.process_all_levels:
+                                print(f"3D variable detected with pressure dimension")
+                                print(f"Will process each pressure level separately")
+                                # Pressure suffix will be set per level in the loop below
+                            else:
+                                print(f"3D variable detected with pressure dimension")
+                                print(f"Requested pressure levels: {pressure_levels} hPa")
+                                
+                                # Normalize pressure levels to match dataset units
+                                pressure_levels_dataset, pressure_units = normalize_pressure_levels(
+                                    pressure_levels, variable_data.pressure
+                                )
+                                
+                                # Select and average specified pressure levels (using dataset units)
+                                variable_data = variable_data.sel(
+                                    pressure=pressure_levels_dataset, method='nearest'
+                                ).mean(dim='pressure')
+                                
+                                # Set pressure suffix for averaged data (always use hPa for filename)
+                                if len(pressure_levels) == 1:
+                                    pressure_suffix = f"_{int(pressure_levels[0])}hPa"
+                                else:
+                                    levels_str = '-'.join([str(int(p)) for p in pressure_levels])
+                                    pressure_suffix = f"_avg{levels_str}hPa"
+                        
+                        print(f"Relative humidity computed successfully")
+                        use_precomputed = False
+                        
+                    except Exception as e:
+                        print(f"ERROR: Failed to compute relative humidity: {e}")
+                        print(f"Skipping {variable_name}")
+                        continue
+                else:
+                    print(f"ERROR: Variable '{variable_name}' not found in dataset")
+                    print(f"Skipping {variable_name}")
+                    continue
         
         # =================================================================
         # PROCESS EACH DATE RANGE FOR THIS VARIABLE

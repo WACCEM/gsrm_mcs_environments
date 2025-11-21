@@ -1,0 +1,204 @@
+========================================================================
+Wind Shear Computation for icon_d3hp003
+========================================================================
+Model: icon_d3hp003
+Location: NERSC
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON
+========================================================================
+Executing: srun -n 1 -c 32 --cpu_bind=cores python compute_wind_shear.py   --catalog_url "https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"   --current_location "NERSC"   --catalog_model "icon_d3hp003"   --model_time_freq "6H"   --catalog_params '{"zoom": 8, "time": "PT6H", "time_method": "inst"}'   --output_dir "/pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON"
+======================================================================
+Wind Shear Computation Script
+======================================================================
+Model: icon_d3hp003
+Location: NERSC
+Time resolution: 6H
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON
+======================================================================
+
+Loading catalog and dataset...
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset icon_d3hp003...
+/global/common/software/m1867/python/lp_env/easy/lib/python3.12/site-packages/intake_xarray/base.py:21: FutureWarning: The return type of `Dataset.dims` will be changed to return a set of dimension names in future, in order to be more consistent with `DataArray.dims`. To access a mapping from dimension names to lengths, please use `Dataset.sizes`.
+  'dims': dict(self._ds.dims),
+Dataset loaded successfully
+/global/cfs/cdirs/wcm_code/lpaccini/scripts/waccem_repo_scripts/gsrm_mcs_environments/pre_process/compute_wind_shear.py:493: FutureWarning: The return type of `Dataset.dims` will be changed to return a set of dimension names in future, in order to be more consistent with `DataArray.dims`. To access a mapping from dimension names to lengths, please use `Dataset.sizes`.
+  print(f"Dataset loaded. Dimensions: {dict(ds.dims)}")
+Dataset loaded. Dimensions: {'time': 1700, 'cell': 786432, 'pressure': 30, 'pressure_rva': 3}
+Available variables: ['egpvi', 'einvi', 'ekhvi', 'ekvvi', 'hur', 'hus', 'orog', 'pr', 'psl', 'qall', 'rlut', 'rsut', 'rva', 'sftgif', 'sftlf', 'ta', 'ts', 'ua', 'uas', 'va', 'vas', 'wa', 'zg']
+
+Applying fixes for model: icon_d3hp003
+
+Processing data by month...
+
+Processing 2020-01...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202001.nc
+
+Processing 2021-01...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202101.nc
+
+Processing 2020-02...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202002.nc
+
+Processing 2021-02...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202102.nc
+
+Processing 2020-03...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202003.nc
+
+Processing 2021-03...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202103.nc
+
+Processing 2020-04...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202004.nc
+
+Processing 2020-05...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202005.nc
+
+Processing 2020-06...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202006.nc
+
+Processing 2020-07...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202007.nc
+
+Processing 2020-08...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202008.nc
+
+Processing 2020-09...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202009.nc
+
+Processing 2020-10...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202010.nc
+
+Processing 2020-11...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202011.nc
+
+Processing 2020-12...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [1000, 400] hPa → [100000, 40000] Pa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converted pressure levels: [850, 100] hPa → [85000, 10000] Pa
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON/icon_d3hp003_wind_shear_hp8_6H.202012.nc
+
+======================================================================
+Processing complete!
+======================================================================
+
+========================================================================
+Processing complete at Sun 09 Nov 2025 10:09:52 PM PST
+========================================================================

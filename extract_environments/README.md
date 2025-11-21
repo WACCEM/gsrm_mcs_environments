@@ -13,11 +13,11 @@ The extraction tools support three main approaches:
 
 1. **Circular Area Extraction** - Extract statistics within circular areas around MCS centroids
 2. **Mask-Based Extraction** - Extract statistics using actual MCS spatial masks  
-3. **ERA5 Extraction** - Extract from pre-processed ERA5 data in 25×25° boxes
+3. **ERA5 Extraction** - Extract from ERA5 reanalysis data (two methods: pre-processed boxes or direct zarr)
 
 ---
 
-## 🎯 Quick Start
+## Quick Start
 
 ### For Model Output (HEALPix Grid)
 
@@ -39,22 +39,28 @@ sbatch run_get_env_vars_from_masks_SCREAM.sh  # or other models
 
 ### For ERA5 Data
 
+**Approach 1: Pre-processed boxes (IMERGv6 tracks - legacy):**
 ```bash
 sbatch run_get_stats_era5.sh
 ```
 
+**Approach 2: Direct zarr file (IMERGv7 or IMERGv6 tracks - recommended):**
+```bash
+sbatch run_get_env_vars_ERA5_IMERGv7.sh
+```
+
 ---
 
-## 📚 Core Scripts
+## Core Scripts
 
 ### Python Scripts
 
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
-| `get_env_vars.py` | Circular area extraction (standard) | SCREAM, ICON, UM, NICAM |
-| `get_env_vars_time_batching.py` | Circular area extraction with time batching | **IFS only** (handles large hourly datasets) |
+| `get_env_vars.py` | Circular area extraction (standard) | SCREAM, ICON, UM, NICAM, **ERA5 zarr** |
+| `get_env_vars_time_batching.py` | Circular area extraction with time batching | **IFS only** (handles large hourly datasets), **ERA5 zarr (large date ranges)** |
 | `get_env_vars_from_masks.py` | Mask-based extraction | When you have MCS mask files |
-| `get_stats_era5.py` | ERA5 statistics extraction | ERA5 reanalysis data |
+| `get_stats_era5.py` | ERA5 statistics extraction | ERA5 pre-processed boxes (legacy) |
 | `env_extraction_utils.py` | Shared utility functions | Called by above scripts |
 
 ### Utility Functions (`env_extraction_utils.py`)
@@ -79,7 +85,7 @@ Each model has dedicated bash scripts for easy job submission:
 
 ---
 
-## 🔍 Extraction Approaches
+## Extraction Approaches
 
 ### 1. Circular Area Extraction (`get_env_vars.py`)
 
@@ -145,11 +151,16 @@ Each model has dedicated bash scripts for easy job submission:
 - No pre-convective period
 - Track duration only
 
-### 4. ERA5 Extraction (`get_stats_era5.py`)
+### 4. ERA5 Extraction
+
+ERA5 reanalysis can be processed using **two different approaches** depending on the track dataset version:
+
+**Approach 1: Pre-processed boxes (`get_stats_era5.py`) - Legacy**
 
 **What it does:**
-- Processes ERA5 data pre-extracted in 25×25 boxes around MCS tracks
+- Processes ERA5 data pre-extracted in 25×25° boxes around MCS tracks
 - Calculates statistics over circular areas (similar to model output)
+- Uses IMERGv6-based track dataset
 
 **Input Data:**
 - Directory: `/global/cfs/cdirs/m1867/zfeng/gpm/mcs_global`
@@ -162,13 +173,39 @@ Each model has dedicated bash scripts for easy job submission:
 - Limited to ±3° from track center
 
 **When to use:**
+- Legacy IMERGv6 track validation only
+
+**Approach 2: Direct zarr file (`get_env_vars.py`) - RECOMMENDED**
+
+**What it does:**
+- Loads ERA5 from global HEALPix zarr file (same as catalog models)
+- Can use updated IMERGv7-based track dataset
+- Same processing pipeline as SCREAM, ICON, etc.
+
+**Input Data:**
+- Zarr file: `/pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr`
+- Track file (last version): `/global/cfs/cdirs/wcm_shr/hk25/mcs/IMERGv7/stats/mcs_tracks_final_*.nc`
+- Format: HEALPix grid with absolute timestamps
+- All standard ERA5 variables available
+
+**Configuration:**
+```bash
+# In run_get_env_vars_ERA5_IMERGv7.sh
+ZARR_PATH="/pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr"
+ZARR_MODEL_NAME="era5"
+TRACK_FILE="/global/cfs/cdirs/wcm_shr/hk25/mcs/IMERGv7/stats/mcs_tracks_final_20190801.0000_20200901.0000.nc"
+MODEL_TIME_FREQ="3H"
+```
+
+**When to use:**
+- Current IMERGv7 track analysis
 - Comparing model output to ERA5 reanalysis
 - Need observationally-constrained environment
 - Want same statistics format as model output
 
 ---
 
-## 📊 Output Format
+## Output Format
 
 All scripts produce parquet files with consistent structure:
 
@@ -202,7 +239,7 @@ All scripts produce parquet files with consistent structure:
 
 ---
 
-## 🔧 Common Features
+## Common Features
 
 ### 2D Variables
 Surface and column-integrated variables:
@@ -323,7 +360,7 @@ DATE_RANGES=(
 
 ---
 
-## 🚀 Usage Examples
+## Usage Examples
 
 ### Example 1: Extract 2D Variables (SCREAM)
 ```bash
@@ -378,7 +415,7 @@ python get_env_vars_from_masks.py \
   --date_ranges "2020-01-01 2020-12-31"
 ```
 
-### Example 6: ERA5 Statistics
+### Example 6: ERA5 Statistics (Pre-processed boxes - legacy)
 ```bash
 python get_stats_era5.py \
   --base_dir /global/cfs/cdirs/m1867/zfeng/gpm/mcs_global \
@@ -390,9 +427,22 @@ python get_stats_era5.py \
   --time_freq "3H"
 ```
 
+### Example 7: ERA5 Direct Zarr (IMERGv7 tracks - recommended)
+```bash
+python get_env_vars.py \
+  --zarr_path "/pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr" \
+  --zarr_model_name "era5" \
+  --trackfile /global/cfs/cdirs/wcm_shr/hk25/mcs/IMERGv7/stats/mcs_tracks_final_20190801.0000_20200901.0000.nc \
+  --output_dir /path/to/output \
+  --variables prw tas \
+  --date_ranges "2019-08-01 2020-09-01" \
+  --radii "2,3" \
+  --model_time_freq "3H"
+```
+
 ---
 
-## 🔍 Model-Specific Considerations
+##  Model-Specific Considerations
 
 ### SCREAM (`scream_ne120`)
 ```bash
@@ -406,14 +456,13 @@ LAND_FRACTION_VAR="LANDFRAC"
 CATALOG_PARAMS='{"zoom": 8, "time": "PT3H"}'  # 2D data
 # For 3D: '{"zoom": 8, "time": "PT6H", "time_method": "inst"}'
 MODEL_TIME_FREQ="3H"  # or "6H" for 3D
-LAND_FRACTION_VAR="sftlf"
 ```
 
 ### IFS
 ```bash
-CATALOG_PARAMS='{"zoom": 8, "time": "PT1H"}'  # Hourly output
-MODEL_TIME_FREQ="1H"
-# Use get_env_vars_time_batching.py with --time_batch_size 1000
+CATALOG_PARAMS='{"zoom": 8}'  # 
+MODEL_TIME_FREQ="3H" #IFS has hourly output but it is suggested to use 3H for 2D and 6H for 3D
+# Use get_env_vars_time_batching.py with --time_batch_size 500
 ```
 **Note:** IFS uses different dimension names (auto-fixed by `env_extraction_utils.py`)
 
@@ -425,13 +474,28 @@ MODEL_TIME_FREQ="3H"
 
 ### NICAM (`nicam_d3hp003`)
 ```bash
-CATALOG_PARAMS='{"zoom": 8, "time": "PT3H"}'
+CATALOG_PARAMS='{"zoom": 8, "time": "PT3H"}' #For 3D, use "time": "PT6H"
 MODEL_TIME_FREQ="3H"
 ```
 
+### ERA5 (Direct zarr file)
+```bash
+# Use zarr file instead of catalog
+ZARR_PATH="/pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr"
+ZARR_MODEL_NAME="era5"
+MODEL_TIME_FREQ="3H"
+
+# Track file (IMERGv7)
+TRACK_FILE="/global/cfs/cdirs/wcm_shr/hk25/mcs/IMERGv7/stats/mcs_tracks_final_20190801.0000_20200901.0000.nc"
+
+# For large date ranges, use time batching:
+# python get_env_vars_time_batching.py with --time_batch_size 1000
+```
+**Note:** ERA5 dimension fixes are auto-applied by `env_extraction_utils.py` (renames 'level' to 'pressure')
+
 ---
 
-## 📖 Additional Documentation
+## Additional Documentation
 
 - **`README_mask_extraction.md`** - Detailed guide for mask-based extraction
 - **`README_ERA5.md`** - Complete ERA5 data processing guide
@@ -440,7 +504,7 @@ MODEL_TIME_FREQ="3H"
 
 ---
 
-## 📂 Directory Structure
+## Directory Structure
 
 ```
 extract_environments/
@@ -484,7 +548,7 @@ extract_environments/
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Missing Variables
 **Error:** `Variable 'X' not found in dataset`
@@ -532,7 +596,7 @@ extract_environments/
 
 ---
 
-## 📞 Support
+## Support
 
 For issues or questions:
 1. Check relevant README files for detailed guidance
@@ -542,13 +606,13 @@ For issues or questions:
 
 ---
 
-## 🔄 Related Scripts
+## Related Scripts
 
 - **`get_land_fractions.py`** - Calculate land fraction along tracks (separate workflow)
 
 ---
 
-## ✨ Recent Updates
+## Recent Updates
 
 - **November 2025:** Added mask-based extraction capability
 - **November 2025:** Consolidated utility functions into `env_extraction_utils.py`

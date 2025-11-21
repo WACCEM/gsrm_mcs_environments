@@ -1,0 +1,262 @@
+========================================================================
+Wind Shear Computation
+========================================================================
+Model: era5 (zarr)
+Zarr path: /pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5
+Date range: 2019-08-01 to 2021-03-01
+========================================================================
+Executing: srun -n 1 -c 32 --cpu_bind=cores python compute_wind_shear.py       --zarr_path "/pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr"       --zarr_model_name "era5"       --model_time_freq "3H"       --output_dir "/pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5" --start_date "2019-08-01" --end_date "2021-03-01"
+======================================================================
+Wind Shear Computation Script
+======================================================================
+Model: scream_ne120
+Location: NERSC
+Time resolution: 3H
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5
+Date range: 2019-08-01 to 2021-03-01
+======================================================================
+
+Loading dataset from zarr file: /pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr
+
+Applying fixes for model: era5
+  Renamed dimension: 'level' → 'pressure'
+Loaded zarr dataset: era5
+Time range: 2019-01-01T00:00:00.000000000 to 2021-12-31T21:00:00.000000000
+Available variables: ['d2m', 'hfssd', 'hur', 'hus', 'ie', 'omega', 'prw', 'ps', 'psl', 'sstk', 'ta', 'tas', 'u10', 'ua', 'v10', 'va', 'zg']
+/global/cfs/cdirs/wcm_code/lpaccini/scripts/waccem_repo_scripts/gsrm_mcs_environments/pre_process/compute_wind_shear.py:534: FutureWarning: The return type of `Dataset.dims` will be changed to return a set of dimension names in future, in order to be more consistent with `DataArray.dims`. To access a mapping from dimension names to lengths, please use `Dataset.sizes`.
+  print(f"Dataset loaded. Dimensions: {dict(ds.dims)}")
+Dataset loaded. Dimensions: {'time': 8768, 'cell': 786432, 'pressure': 15}
+Available variables: ['d2m', 'hfssd', 'hur', 'hus', 'ie', 'omega', 'prw', 'ps', 'psl', 'sstk', 'ta', 'tas', 'u10', 'ua', 'v10', 'va', 'zg']
+
+Filtering data: 2019-08-01 to 2021-03-01
+
+Processing data by month...
+
+Processing 2020-01...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202001.nc
+
+Processing 2021-01...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202101.nc
+
+Processing 2020-02...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202002.nc
+
+Processing 2021-02...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202102.nc
+
+Processing 2020-03...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202003.nc
+
+Processing 2021-03...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202103.nc
+
+Processing 2020-04...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202004.nc
+
+Processing 2020-05...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202005.nc
+
+Processing 2020-06...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202006.nc
+
+Processing 2020-07...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202007.nc
+
+Processing 2019-08...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.201908.nc
+
+Processing 2020-08...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202008.nc
+
+Processing 2019-09...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.201909.nc
+
+Processing 2020-09...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202009.nc
+
+Processing 2019-10...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.201910.nc
+
+Processing 2020-10...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202010.nc
+
+Processing 2019-11...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.201911.nc
+
+Processing 2020-11...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202011.nc
+
+Processing 2019-12...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.201912.nc
+
+Processing 2020-12...
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 750.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/era5_wind_shear_hp8_3H.202012.nc
+
+======================================================================
+Processing complete!
+======================================================================
+
+========================================================================
+Processing complete at Tue 18 Nov 2025 12:25:12 AM PST
+========================================================================

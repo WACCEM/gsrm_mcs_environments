@@ -328,6 +328,128 @@ def compute_surface_wind_speed(ds):
     return sfcWind
 
 
+def compute_relative_humidity(ds):
+    """
+    Compute relative humidity (hur) from pressure, temperature, and specific humidity.
+    
+    Follows the WMO standard methodology (WMO Guide 8) using mixing ratios,
+    similar to MetPy's implementation.
+    
+    Parameters:
+    -----------
+    ds : xarray.Dataset
+        Must contain:
+        - 'pressure': pressure coordinate (Pa or hPa, auto-detected)
+        - 'ta': air temperature (K)
+        - 'hus': specific humidity (kg/kg)
+    
+    Returns:
+    --------
+    xarray.DataArray
+        Relative humidity in percent (0-100%)
+    
+    Notes:
+    ------
+    Formula (WMO eq. 4.A.16):
+    1. Convert specific humidity to mixing ratio:
+       w = q / (1 - q)
+    2. Calculate saturation vapor pressure using Clausius-Clapeyron:
+       es = 611.2 * exp(17.67 * (T - 273.15) / (T - 29.65))  [Pa]
+    3. Calculate saturation mixing ratio:
+       w_s = ε * es / (p - es)  where ε = 0.622
+    4. Calculate relative humidity:
+       RH = 100 * (w / (ε + w)) * ((ε + w_s) / w_s)
+    
+    References:
+    - WMO Guide to Meteorological Instruments and Methods of Observation (WMO-No. 8)
+    - Bolton (1980): The Computation of Equivalent Potential Temperature
+    - MetPy library implementation
+    """
+    print("  Computing relative humidity (hur) from pressure, temperature, and specific humidity...")
+    sys.stdout.flush()
+    
+    # Check required variables
+    required_vars = ['ta', 'hus']
+    missing_vars = [var for var in required_vars if var not in ds]
+    if missing_vars:
+        raise ValueError(f"Missing required variables for hur calculation: {missing_vars}")
+    
+    # Get variables
+    T = ds['ta']  # temperature (K)
+    q = ds['hus']  # specific humidity (kg/kg)
+    
+    # Get pressure coordinate
+    if 'pressure' not in ds.coords and 'pressure' not in ds.dims:
+        raise ValueError("Pressure coordinate 'pressure' not found in dataset")
+    
+    # Get pressure values and detect units
+    if 'pressure' in ds.coords:
+        pressure_coord = ds.coords['pressure']
+    else:
+        # If pressure is a dimension but not a coordinate, it might be in data_vars
+        if 'pressure' in ds.data_vars:
+            pressure_coord = ds['pressure']
+        else:
+            raise ValueError("Could not find pressure data in dataset")
+    
+    # Detect pressure units and convert to Pa if needed
+    pressure_units = detect_pressure_units(pressure_coord)
+    
+    # Broadcast pressure to match data dimensions
+    if 'pressure' in T.dims:
+        # Pressure is a dimension - need to broadcast it
+        if pressure_units == 'hPa':
+            p = pressure_coord * 100  # Convert hPa to Pa
+            print(f"    Converted pressure from hPa to Pa for calculation")
+        else:
+            p = pressure_coord  # Already in Pa
+        
+        # Broadcast pressure to match temperature shape
+        p = p + 0 * T  # Broadcasting trick
+    else:
+        raise ValueError("Pressure must be a dimension of the temperature data")
+    
+    # Physical constants
+    eps = 0.622  # Ratio of molecular weight of water vapor to dry air (ε)
+    
+    # Step 1: Convert specific humidity to mixing ratio
+    # w = q / (1 - q)
+    w = q / (1 - q)
+    
+    # Step 2: Calculate saturation vapor pressure using Clausius-Clapeyron (Bolton 1980)
+    # es = 611.2 * exp(17.67 * (T - 273.15) / (T - 29.65))  [Pa]
+    T_celsius = T - 273.15
+    es = 611.2 * np.exp(17.67 * T_celsius / (T - 29.65))
+    
+    # Step 3: Calculate saturation mixing ratio
+    # w_s = ε * es / (p - es)
+    w_s = eps * es / (p - es)
+    
+    # Step 4: Calculate relative humidity (WMO formula)
+    # RH = (w / (ε + w)) * ((ε + w_s) / w_s)
+    # Convert to percentage
+    hur = 100.0 * (w / (eps + w)) * ((eps + w_s) / w_s)
+    
+    # Clip to physical range [0, 100]
+    hur = hur.clip(0, 100)
+    
+    # Add proper attributes
+    hur.attrs = {
+        'long_name': 'Relative Humidity',
+        'units': '%',
+        'standard_name': 'relative_humidity',
+        'description': 'Relative humidity calculated from pressure, temperature, and specific humidity using WMO standard',
+        'formula': 'RH = 100 * (w/(ε+w)) * ((ε+w_s)/w_s), where w = q/(1-q) and w_s = ε*es/(p-es)',
+        'valid_range': '0 to 100',
+        'reference': 'WMO Guide 8 eq. 4.A.16; Bolton (1980)'
+    }
+    
+    print("  Relative humidity computed successfully")
+    sys.stdout.flush()
+    
+    return hur
+
+
 def apply_model_fixes(ds, model_name):
     """
     Apply model-specific fixes for dimension and variable names.
@@ -415,15 +537,20 @@ def apply_model_fixes(ds, model_name):
     
     # Some models use 'level' instead of 'pressure'
     if 'level' in ds.dims:
-        ds = ds.rename({'level': 'pressure'})
-        print("  Renamed dimension: 'level' → 'pressure'")
-        ds = ds.assign_coords(pressure=('pressure', ds.lev.values))
-        ds = ds.drop_vars('lev')
-        # Check if pressure coordinate needs to be created from level indices
-        # if 'pressure' not in ds.coords or not hasattr(ds['pressure'], 'units'):
-        #     print("  WARNING: 'level' dimension found but no proper pressure coordinate")
-        
-        sys.stdout.flush()
+        # For SCREAM: 'level' dimension needs coordinate from 'lev' variable
+        if 'scream' in model_name.lower():
+            ds = ds.rename({'level': 'pressure'})
+            print("  Renamed dimension: 'level' → 'pressure' (SCREAM)")
+            if 'lev' in ds.data_vars or 'lev' in ds.coords:
+                ds = ds.assign_coords(pressure=('pressure', ds.lev.values))
+                ds = ds.drop_vars('lev')
+                print("  Assigned pressure coordinate from 'lev' variable")
+            sys.stdout.flush()
+        # For ERA5 and other models: 'level' is already the pressure coordinate
+        else:
+            ds = ds.rename({'level': 'pressure'})
+            print("  Renamed dimension: 'level' → 'pressure'")
+            sys.stdout.flush()
     
     return ds
 
