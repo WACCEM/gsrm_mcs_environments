@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -N 1
 #SBATCH -C cpu
-#SBATCH -q debug
-#SBATCH -t 00:30:00
+#SBATCH -q regular
+#SBATCH -t 02:00:00
 #SBATCH -J extract_icon_masks
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -47,7 +47,7 @@ CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 CONVERT_OMEGA_TO_WA=""  # Set to "--convert_omega_to_wa" to convert omega to wa
 
 # Set variables to extract
-VARIABLES=("tas" )  # Add more as needed: "prw" "clt" "sfcWind" hflsd "hfssd"
+VARIABLES=("hflsd" "hfssd" "ps" "sfcWind" )  # Add more as needed: "prw" "clt"   "tas"
 
 # ===== EXAMPLE: Extract omega at 850 hPa from ICON =====
 # Uncomment these lines to extract omega at 850 hPa:

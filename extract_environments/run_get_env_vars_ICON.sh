@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -N 1
 #SBATCH -C cpu
-#SBATCH -q debug
-#SBATCH -t 00:30:00
+#SBATCH -q regular
+#SBATCH -t 00:55:00
 #SBATCH -J extract_icon
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -14,7 +14,7 @@ conda activate /global/common/software/m1867/python/lp_env/easy
 # Set up paths and parameters
 ROOT_DIR="/global/cfs/cdirs/m4581/gsharing/hackathon"
 TRACK_FILE="${ROOT_DIR}/tracking/mcs/icon_d3hp003/stats/mcs_tracks_final_20200102.0000_20201231.2330.nc" #ICON
-OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/ICON_all"
+OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/ICON_all/"
 
 # PRECOMPUTED LAND FRACTION DATA (from get_land_fractions.py output)
 LAND_FRACTION_FILE="" #/pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/mcs_land_fractions_icon_d3hp003_zoom8_summary.parquet" # for ICON
@@ -28,7 +28,7 @@ mkdir -p $OUTPUT_DIR
 CATALOG_URL="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"
 CURRENT_LOCATION="NERSC" 
 CATALOG_MODEL="icon_d3hp003" 
-CATALOG_PARAMS='{"zoom": 8, time="PT3H" }'  # For 3D ICON data, use: '{"zoom": 8, time="PT6H",time_method='inst'}'
+CATALOG_PARAMS='{"zoom": 8, "time": "PT6H", "time_method": "inst"}'  # For 3D ICON output, use: '{"zoom": 8, "time": "PT6H", "time_method": "inst"}', use "PT3H" for 2D output
 
 # Set spatial bounds
 MIN_LAT="-90"
@@ -47,24 +47,24 @@ LON_VAR="meanlon"
 LAND_THRESHOLD=""  # Leave empty to process all tracks, or set value like "0.1" for ocean only
 HOURS_BEFORE_INIT="24"  # Extract 24 hours before track initiation
 BATCH_SIZE="500"
-MODEL_TIME_FREQ="3H"  # Model output frequency (1H, 3H, 6H, etc.) - ICON is 6-hourly for 3D
+MODEL_TIME_FREQ="6H"  # Model output frequency (1H, 3H, 6H, etc.) - ICON is 6-hourly for 3D
 
 # Pre-computed variable options (leave empty if not using pre-computed data)
 PRECOMPUTED_DIR=""  # Directory with pre-computed files: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON
 PRECOMPUTED_PATTERN=""  # Filename pattern (optional), e.g. "icon_d3hp003_wind_shear_hp8_6H"
-TIME_RES=""  # Time resolution of pre-computed files, e.g. "PT6H"
+TIME_RES=""  # Time resolution of pre-computed files= "PT6H". Variables are: "deep_shear_magnitude", "low_shear_magnitude"
 
 # 3D variable options (for pressure level data)
-PRESSURE_LEVELS=("")  # For 3D variables, specify levels: "850,500,300"
+PRESSURE_LEVELS=("500")  # For 3D variables, specify levels: "850,500,300"
 CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 
 # Set variables to extract
-VARIABLES=("hfssd" "huss")  # Add more as needed: "tas" "hflsd" "clt"  "prw"
+VARIABLES=("wa" "hus" "hur")  # Add more as needed: "tas" "hflsd" "clt"   "hfssd" "huss"
 # VARIABLES=("tas") #"wa, hur, prw , hflsd, hfssd
 # ===== EXAMPLE: Extract omega at 850 hPa from ICON =====
 # Uncomment these lines to extract omega at 850 hPa:
 # CATALOG_MODEL="icon_d3hp003"
-# CATALOG_PARAMS='{"zoom": 8, time="PT6H",time_method='inst'}'  # Required for 3D data
+# CATALOG_PARAMS='{"zoom": 8, "time":"PT6H","time_method":"inst"}'  # Required for 3D data
 # VARIABLES=("wa")  # Process vertical velocity
 # PRESSURE_LEVELS="850"  # Extract at 850 hPa
 # CONVERT_WA_TO_OMEGA="--convert_wa_to_omega"  # Convert wa to omega
@@ -72,7 +72,7 @@ VARIABLES=("hfssd" "huss")  # Add more as needed: "tas" "hflsd" "clt"  "prw"
 
 # ===== EXAMPLE: Extract multiple 3D variables at multiple levels =====
 # CATALOG_MODEL="icon_d3hp003"
-# CATALOG_PARAMS='{"zoom": 8, time="PT6H",time_method='inst'}'
+# CATALOG_PARAMS='{"zoom": 8, "time":"PT6H","time_method":"inst"}'
 # VARIABLES=("wa" "hus" "ta")
 # PRESSURE_LEVELS="850,500,300"  # Extract at these three levels
 # CONVERT_WA_TO_OMEGA="--convert_wa_to_omega"  # Only affects 'wa'
