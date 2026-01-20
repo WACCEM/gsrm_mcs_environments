@@ -1,0 +1,443 @@
+========================================================================
+Wind Shear Computation for um_glm_n2560_RAL3p3
+========================================================================
+Model: um_glm_n2560_RAL3p3
+Location: online
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM
+========================================================================
+Executing: srun -n 1 -c 32 --cpu_bind=cores python compute_wind_shear.py   --catalog_url "https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"   --current_location "online"   --catalog_model "um_glm_n2560_RAL3p3"   --model_time_freq "3H"   --catalog_params '{"zoom": 8, "time": "PT3H"}'   --output_dir "/pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM"   --low_shear_levels "1000,800; 975,800; 950,800"   --deep_shear_levels "850,400; 800,400"
+======================================================================
+Wind Shear Computation Script
+======================================================================
+Model: um_glm_n2560_RAL3p3
+Location: online
+Time resolution: 3H
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM
+
+Pressure level ranges:
+  Low-level shear:  [(1000, 800), (975, 800), (950, 800)]
+  Deep-layer shear: [(850, 400), (800, 400)]
+======================================================================
+
+Loading catalog and dataset...
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset um_glm_n2560_RAL3p3...
+/global/common/software/m1867/python/lp_env/easy/lib/python3.12/site-packages/intake_xarray/base.py:21: FutureWarning: The return type of `Dataset.dims` will be changed to return a set of dimension names in future, in order to be more consistent with `DataArray.dims`. To access a mapping from dimension names to lengths, please use `Dataset.sizes`.
+  'dims': dict(self._ds.dims),
+Dataset loaded successfully
+
+Applying fixes for model: um_glm_n2560_RAL3p3
+/global/cfs/cdirs/wcm_code/lpaccini/scripts/waccem_repo_scripts/gsrm_mcs_environments/pre_process/compute_wind_shear.py:620: FutureWarning: The return type of `Dataset.dims` will be changed to return a set of dimension names in future, in order to be more consistent with `DataArray.dims`. To access a mapping from dimension names to lengths, please use `Dataset.sizes`.
+  print(f"Dataset loaded. Dimensions: {dict(ds.dims)}")
+Dataset loaded. Dimensions: {'time': 3497, 'pressure': 25, 'cell': 786432}
+Available variables: ['cli', 'clw', 'hur', 'hus', 'qg', 'qr', 'qs', 'ta', 'ua', 'va', 'wa', 'zg', 'orog', 'sftlf']
+
+Processing data by month...
+
+Processing 2020-01...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202001.nc
+
+Processing 2021-01...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202101.nc
+
+Processing 2020-02...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202002.nc
+
+Processing 2021-02...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202102.nc
+
+Processing 2020-03...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202003.nc
+
+Processing 2021-03...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202103.nc
+
+Processing 2020-04...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202004.nc
+
+Processing 2021-04...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202104.nc
+
+Processing 2020-05...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202005.nc
+
+Processing 2020-06...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202006.nc
+
+Processing 2020-07...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202007.nc
+
+Processing 2020-08...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202008.nc
+
+Processing 2020-09...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202009.nc
+
+Processing 2020-10...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202010.nc
+
+Processing 2020-11...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202011.nc
+
+Processing 2020-12...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/UM/um_glm_n2560_RAL3p3_wind_shear_hp8_3H.202012.nc
+
+======================================================================
+Processing complete!
+======================================================================
+
+========================================================================
+Processing complete at Tue 02 Dec 2025 07:00:13 PM PST
+========================================================================

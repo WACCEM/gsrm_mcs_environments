@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -N 1
 #SBATCH -C cpu
-#SBATCH -q regular
-#SBATCH -t 00:55:00
+#SBATCH -q debug
+#SBATCH -t 00:15:00
 #SBATCH -J extract_icon
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -50,17 +50,18 @@ BATCH_SIZE="500"
 MODEL_TIME_FREQ="6H"  # Model output frequency (1H, 3H, 6H, etc.) - ICON is 6-hourly for 3D
 
 # Pre-computed variable options (leave empty if not using pre-computed data)
-PRECOMPUTED_DIR=""  # Directory with pre-computed files: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON
-PRECOMPUTED_PATTERN=""  # Filename pattern (optional), e.g. "icon_d3hp003_wind_shear_hp8_6H"
-TIME_RES=""  # Time resolution of pre-computed files= "PT6H". Variables are: "deep_shear_magnitude", "low_shear_magnitude"
+PRECOMPUTED_DIR="/global/cfs/cdirs/wcm_shr/hk25/output_buoyancy/icon_d3hp003/"  # Directory with pre-computed files: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON
+PRECOMPUTED_PATTERN="icon_d3hp003_2layers_BLcomponents_hp8_6H"  # Filename pattern (optional), e.g. "icon_d3hp003_wind_shear_hp8_6H"
+TIME_RES="PT6H"  # Time resolution of pre-computed files= "PT6H". Variables are: "deep_shear_magnitude", "low_shear_magnitude"
 
 # 3D variable options (for pressure level data)
-PRESSURE_LEVELS=("500")  # For 3D variables, specify levels: "850,500,300"
+PRESSURE_LEVELS=("")  # For 3D variables, specify levels: "850,800,750,700,600,500"
 CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 
 # Set variables to extract
-VARIABLES=("wa" "hus" "hur")  # Add more as needed: "tas" "hflsd" "clt"   "hfssd" "huss"
+# VARIABLES=("low_shear_magnitude_975hPa-800hPa" "deep_shear_magnitude_850hPa-400hPa")  # Add more as needed: "tas" "hflsd" "clt"   "hfssd" "huss" "wa" "hus"
 # VARIABLES=("tas") #"wa, hur, prw , hflsd, hfssd
+VARIABLES=( "BL_SUBSAT") #"thetae_bl" "thetae_lt_sat"
 # ===== EXAMPLE: Extract omega at 850 hPa from ICON =====
 # Uncomment these lines to extract omega at 850 hPa:
 # CATALOG_MODEL="icon_d3hp003"

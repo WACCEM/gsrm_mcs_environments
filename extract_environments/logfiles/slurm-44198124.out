@@ -1,0 +1,128 @@
+
+Currently Loaded Modules:
+  1) craype-x86-milan
+  2) libfabric/1.22.0
+  3) craype-network-ofi
+  4) xpmem/2.9.7-1.1_20250411150514__g191b5f8bea4c
+  5) PrgEnv-gnu/8.5.0
+  6) cray-dsmml/0.3.0
+  7) cray-libsci/24.07.0
+  8) cray-mpich/8.1.30
+  9) craype/2.7.32
+ 10) gcc-native/13.2
+ 11) perftools-base/24.07.0
+ 12) cpe/24.07
+ 13) cudatoolkit/12.4
+ 14) craype-accel-nvidia80
+ 15) gpu/1.0
+ 16) sqs/2.0
+ 17) darshan/default
+ 18) conda/Miniforge3-24.7.1-0
+ 19) python/3.11
+
+ 
+
+WARNING: Land fraction file not found: 
+Will process all tracks without land fraction filtering.
+Starting environmental variable extraction...
+Processing 1 variable(s) across 1 date range(s)
+================================================
+Processing all variables: huss
+================================================
+Processing 1 date ranges
+============================================================
+Environmental Variable Extraction
+============================================================
+Model: um_glm_n2560_RAL3p3
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/UM_all
+Variables: huss
+Number of date ranges: 1
+============================================================
+Using radii: [5.  3.5 2. ]
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset um_glm_n2560_RAL3p3...
+Computing HEALPix grid...
+Grid: nside=256
+Loading MCS track data from /global/cfs/cdirs/m4581/gsharing/hackathon/tracking/mcs/um_glm_n2560_RAL3p3/stats/mcs_tracks_final_20200201.0000_20210301.0000.nc
+Loaded 25571000 total track-time points
+After dropping NaN positions: 808587 valid track time points
+After spatial filtering: 700152 track time points
+This dataset will be reused for all 1 variable(s) and 1 date range(s)
+Calculating HEALPix indices...
+
+============================================================
+Processing variable 1/1: huss
+============================================================
+Setting up variable data (huss)...
+Variable data ready
+
+============================================================
+Processing date range 1/1
+Date range: 2020-02-01 to 2021-03-31
+============================================================
+Filtered to 700152 track time points for this date range
+Subsampling tracks to model frequency: 3H
+Subsampled from 700152 to 245107 time points (65.0% reduction)
+Calculating circular areas for 245107 track positions...
+  Progress: 0/245107 positions processed...
+  Progress: 50000/245107 positions processed...
+  Progress: 100000/245107 positions processed...
+  Progress: 150000/245107 positions processed...
+  Progress: 200000/245107 positions processed...
+Calculated circular areas for 735321 track-time-radius combinations
+Extracting pre-convective areas (first time step per track)...
+Extracted pre-convective areas for 35233 tracks
+Creating track time mapping...
+Extracting huss statistics for track duration...
+Loading huss data for 441949 pixels and 9456 time steps...
+Time mapping created: 9456 requested → 9456 actual times
+Processing 735321 areas with batched approach (batch_size=500)...
+  Progress: 100000/735321 areas processed...
+  Progress: 200000/735321 areas processed...
+  Progress: 300000/735321 areas processed...
+  Progress: 400000/735321 areas processed...
+  Progress: 500000/735321 areas processed...
+  Progress: 600000/735321 areas processed...
+  Progress: 700000/735321 areas processed...
+Extracted huss statistics for 735321 combinations
+Adding pre-convective data (24 hours before initiation)...
+Collecting all pre-convective times and pixels for 35233 tracks...
+Loading pre-convective data: 432720 pixels × 9472 times...
+Pre-convective data loaded successfully
+Extracting pre-convective statistics for 35233 tracks...
+  Processed 10000/35233 tracks, extracted 240000 data points.
+  Processed 20000/35233 tracks, extracted 480000 data points.
+  Processed 30000/35233 tracks, extracted 720000 data points.
+  Completed processing all 35233 tracks
+Added 845592 pre-convective data points
+Results saved to: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/UM_all/huss/mcs_env_huss_20200201_20210331_huss.parquet
+
+============================================================
+SUMMARY STATISTICS - huss - Date range 1/1
+============================================================
+Total tracks processed: 35233
+Total data points: 1580913
+Radii processed: [5.  3.5 2. ]
+Variable: huss
+Time range: -24.0h to 312.0h
+
+Extraction completed in 1218.55 seconds (20.31 minutes)
+============================================================
+
+============================================================
+VARIABLE huss COMPLETED
+============================================================
+Processed 1 date range(s)
+Total time for huss: 1218.55 seconds (20.31 minutes)
+============================================================
+
+============================================================
+ALL VARIABLES AND DATE RANGES COMPLETED
+============================================================
+Processed 1 variable(s)
+Processed 1 date range(s) per variable
+Total time: 1280.32 seconds (21.34 minutes)
+Average per variable: 1280.32 seconds
+============================================================
+Completed processing for all variables
+All processing complete at Mon 20 Oct 2025 07:59:41 PM PDT

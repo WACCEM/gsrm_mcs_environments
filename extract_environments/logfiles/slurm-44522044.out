@@ -1,0 +1,120 @@
+WARNING: Land fraction file not found: 
+Will process all tracks without land fraction filtering.
+Starting environmental variable extraction...
+Processing 1 variable(s) across 1 date range(s)
+================================================
+Processing all variables: prw
+================================================
+Processing 1 date ranges
+============================================================
+Environmental Variable Extraction
+============================================================
+Model: icon_d3hp003
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/ICON_all
+Variables: prw
+Number of date ranges: 1
+============================================================
+Using radii: [5.  3.5 2. ]
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset icon_d3hp003...
+Dataset loaded successfully
+Computing HEALPix grid...
+Grid: nside=256
+Loading MCS track data from /global/cfs/cdirs/m4581/gsharing/hackathon/tracking/mcs/icon_d3hp003/stats/mcs_tracks_final_20200102.0000_20201231.2330.nc
+Loaded 28325050 total track-time points
+After dropping NaN positions: 818949 valid track time points
+After spatial filtering: 801717 track time points
+This dataset will be reused for all 1 variable(s) and 1 date range(s)
+Calculating HEALPix indices...
+
+============================================================
+Processing variable 1/1: prw
+============================================================
+Setting up variable data (prw)...
+Variable data ready
+
+============================================================
+Processing date range 1/1
+Date range: 2020-01-02 to 2021-01-01
+============================================================
+Filtered to 801717 track time points for this date range
+Subsampling tracks to model frequency: 3H
+Subsampled from 801717 to 281522 time points (64.9% reduction)
+
+Aligning track times to dataset times...
+Aligning track times to dataset times...
+  Dataset has 425 time steps
+  Original unique times: 8760
+  Aligned unique times: 366
+  Reduction: 95.8%
+Calculating circular areas for 281522 track positions...
+  Progress: 0/281522 positions processed...
+  Progress: 50000/281522 positions processed...
+  Progress: 100000/281522 positions processed...
+  Progress: 150000/281522 positions processed...
+  Progress: 200000/281522 positions processed...
+  Progress: 250000/281522 positions processed...
+Calculated circular areas for 844566 track-time-radius combinations
+Extracting pre-convective areas (first time step per track)...
+Extracted pre-convective areas for 43577 tracks
+Creating track time mapping...
+Extracting prw statistics for track duration...
+Loading prw data for 699339 pixels and 366 time steps...
+Successfully loaded data for 366 time steps
+Time mapping created: 366 requested → 366 actual times
+Processing 844566 areas with batched approach (batch_size=500)...
+  Progress: 100000/844566 areas processed...
+  Progress: 200000/844566 areas processed...
+  Progress: 300000/844566 areas processed...
+  Progress: 400000/844566 areas processed...
+  Progress: 500000/844566 areas processed...
+  Progress: 600000/844566 areas processed...
+  Progress: 700000/844566 areas processed...
+  Progress: 800000/844566 areas processed...
+Extracted prw statistics for 844566 combinations
+Adding pre-convective data (24 hours before initiation)...
+Collecting all pre-convective times and pixels for 43577 tracks...
+Loading pre-convective data: 683703 pixels × 2928 times...
+Using time batching: 3 batches of up to 1000 time steps
+  Loading pre-convective time batch 1/3: 1000 times...
+  Loading pre-convective time batch 2/3: 1000 times...
+  Loading pre-convective time batch 3/3: 928 times...
+Pre-convective data loaded successfully: 366 time steps
+Extracting pre-convective statistics for 43577 tracks...
+  Processed 10000/43577 tracks, extracted 240000 data points.
+  Processed 20000/43577 tracks, extracted 480000 data points.
+  Processed 30000/43577 tracks, extracted 720000 data points.
+  Processed 40000/43577 tracks, extracted 960000 data points.
+  Completed processing all 43577 tracks
+Added 1045848 pre-convective data points
+Results saved to: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/ICON_all/prw/mcs_env_prw_20200102_20210101_prw.parquet
+
+============================================================
+SUMMARY STATISTICS - prw - Date range 1/1
+============================================================
+Total tracks processed: 43577
+Total data points: 1890414
+Radii processed: [5.  3.5 2. ]
+Variable: prw
+Time range: -24.0h to 312.0h
+
+Extraction completed in 1132.37 seconds (18.87 minutes)
+============================================================
+
+============================================================
+VARIABLE prw COMPLETED
+============================================================
+Processed 1 date range(s)
+Total time for prw: 1132.37 seconds (18.87 minutes)
+============================================================
+
+============================================================
+ALL VARIABLES AND DATE RANGES COMPLETED
+============================================================
+Processed 1 variable(s)
+Processed 1 date range(s) per variable
+Total time: 1185.86 seconds (19.76 minutes)
+Average per variable: 1185.86 seconds
+============================================================
+Completed processing for all variables
+All processing complete at Tue 28 Oct 2025 01:43:14 PM PDT

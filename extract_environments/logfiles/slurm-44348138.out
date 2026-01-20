@@ -1,0 +1,92 @@
+WARNING: Land fraction file not found: 
+Will process all tracks without land fraction filtering.
+Starting environmental variable extraction...
+Processing 1 variable(s) across 1 date range(s)
+================================================
+Processing all variables: wa
+================================================
+Processing 1 date ranges
+============================================================
+Environmental Variable Extraction
+============================================================
+Model: ifs_tco3999_rcbmf
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/IFS_all
+Variables: wa
+Number of date ranges: 1
+============================================================
+Using radii: [5.  3.5 2. ]
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset ifs_tco3999_rcbmf...
+Resampling IFS data from hourly to 3H...
+After resampling: 3401 time steps
+Detected IFS model: Applying dimension and variable name fixes...
+Swapped 'value' → 'cell' dimension
+Renamed 'level' → 'pressure' dimension
+Renamed variables: {'t': 'ta', 'w': 'wa', 'q': 'hus', 'r': 'hur', '2t': 'tas'}
+IFS model fixes complete
+Computing HEALPix grid...
+Grid: nside=128
+Loading MCS track data from /pscratch/sd/p/paccini/IFS_mcs_hackathon/ifs_tco3999_rcbmf/stats/mcs_tracks_final_20200101.0000_20210228.2330.nc
+Loaded 21012550 total track-time points
+After dropping NaN positions: 709549 valid track time points
+After spatial filtering: 698492 track time points
+This dataset will be reused for all 1 variable(s) and 1 date range(s)
+Calculating HEALPix indices...
+Using pressure levels: [850.0] hPa
+
+============================================================
+Processing variable 1/1: wa
+============================================================
+Setting up variable data (wa)...
+3D variable detected with pressure dimension
+Requested pressure levels: [850.0] hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850.0] hPa (no conversion needed)
+Variable data ready
+
+============================================================
+Processing date range 1/1
+Date range: 2020-01-01 to 2021-03-01
+============================================================
+Filtered to 698492 track time points for this date range
+Subsampling tracks to model frequency: 3H
+Subsampled from 698492 to 243477 time points (65.1% reduction)
+
+Aligning track times to dataset times...
+Aligning track times to dataset times...
+  Dataset has 3401 time steps
+  Original unique times: 10199
+  Aligned unique times: 3401
+  Reduction: 66.7%
+Calculating circular areas for 243477 track positions...
+  Progress: 0/243477 positions processed...
+  Progress: 50000/243477 positions processed...
+  Progress: 100000/243477 positions processed...
+  Progress: 150000/243477 positions processed...
+  Progress: 200000/243477 positions processed...
+Calculated circular areas for 730431 track-time-radius combinations
+Extracting pre-convective areas (first time step per track)...
+Extracted pre-convective areas for 32327 tracks
+Creating track time mapping...
+Extracting wa statistics for track duration...
+Loading wa data for 173007 pixels and 3401 time steps...
+ERROR: Failed to load variable data: 502, message='Bad Gateway', url='https://eerie.cloud.dkrz.de/datasets/ifs-amip-tco3999.hist.v20250101.atmos.healpix_ng.ifs_tco3999_rcbmf.PT1H_7/kerchunk/w/377.20.0'
+WARNING: No data extracted for date range 2020-01-01 to 2021-03-01
+
+============================================================
+VARIABLE wa COMPLETED
+============================================================
+Processed 1 date range(s)
+Total time for wa: 1161.84 seconds (19.36 minutes)
+============================================================
+
+============================================================
+ALL VARIABLES AND DATE RANGES COMPLETED
+============================================================
+Processed 1 variable(s)
+Processed 1 date range(s) per variable
+Total time: 1184.82 seconds (19.75 minutes)
+Average per variable: 1184.82 seconds
+============================================================
+Completed processing for all variables
+All processing complete at Thu 23 Oct 2025 03:00:35 PM PDT

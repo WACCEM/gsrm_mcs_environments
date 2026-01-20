@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -N 1
 #SBATCH -C cpu
-#SBATCH -q debug
-#SBATCH -t 00:30:00
+#SBATCH -q regular
+#SBATCH -t 01:00:00
 #SBATCH -J extract_nicam
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -50,18 +50,18 @@ BATCH_SIZE="500"
 MODEL_TIME_FREQ="6H"  # Model output frequency (1H, 3H, 6H, etc.) - ICON is 6-hourly for 3D
 
 # Pre-computed variable options (leave empty if not using pre-computed data)
-PRECOMPUTED_DIR="/pscratch/sd/p/paccini/temp/hackathon/wind_shear/NICAM/"  # Directory with pre-computed files
-PRECOMPUTED_PATTERN="nicam_gl11_wind_shear_hp8_6H"  # Filename pattern (optional), e.g. "nicam_gl11_wind_shear_hp8_6H"
+PRECOMPUTED_DIR="/global/cfs/cdirs/wcm_shr/hk25/output_buoyancy/nicam_gl11/"  # Directory with pre-computed files /pscratch/sd/p/paccini/temp/hackathon/wind_shear/NICAM/
+PRECOMPUTED_PATTERN="nicam_gl11_2layers_BLcomponents_hp8_6H"  # Filename pattern (optional), e.g. "nicam_gl11_wind_shear_hp8_6H"
 TIME_RES="PT6H"  # Time resolution of pre-computed files, e.g. "PT6H"
 
 # 3D variable options (for pressure level data)
-PRESSURE_LEVELS=("")  # For 3D variables, specify levels: "850,500,300"
+PRESSURE_LEVELS=("")  # For 3D variables, specify levels: "850,800,750,700,600,500"
 CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 
 # Set variables to extract
 # VARIABLES=("prw")  # Add more as needed: "tas" "hflsd" "clt"  "prw"
-VARIABLES=("deep_shear_magnitude") #"wa, hur
-
+# VARIABLES=("low_shear_magnitude_975hPa-800hPa" "deep_shear_magnitude_850hPa-400hPa") #"wa, hur, deep_shear_magnitude
+VARIABLES=( "BL_TOT" "BL_CAPE" "BL_SUBSAT") # "thetae_bl"
 
 # Define date range for processing
 DATE_RANGES=(

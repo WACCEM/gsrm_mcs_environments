@@ -52,17 +52,23 @@ BATCH_SIZE="500"
 MODEL_TIME_FREQ="3H"  # Model output frequency (1H, 3H, 6H, etc.) - SCREAM is 3-hourly
 
 # Pre-computed variable options (leave empty if not using pre-computed data)
-PRECOMPUTED_DIR=""  # Directory with pre-computed files, e.g. /pscratch/sd/p/paccini/temp/hackathon/prw/${CATALOG_MODEL}_PT3H or /pscratch/sd/p/paccini/temp/hackathon/wind_shear/SCREAM
-PRECOMPUTED_PATTERN=""  # Filename pattern (optional), e.g. "scream_ne120_wind_shear_hp8_3H"
-TIME_RES=""  # Time resolution of pre-computed files, e.g. "PT3H"
+PRECOMPUTED_DIR="/global/cfs/cdirs/wcm_shr/hk25/output_buoyancy/scream_ne120"  # Directory with pre-computed files, e.g. /pscratch/sd/p/paccini/temp/hackathon/prw/${CATALOG_MODEL}_PT3H or /pscratch/sd/p/paccini/temp/hackathon/wind_shear/SCREAM
+PRECOMPUTED_PATTERN="scream_ne120_2layers_BLcomponents_hp8_3H"  # Filename pattern (optional), e.g. "scream_ne120_wind_shear_hp8_3H"
+TIME_RES="PT3H"  # Time resolution of pre-computed files, e.g. "PT3H"
 
 # Set variables to extract
 # VARIABLES=( "prw")  # 2D variables: Add more as needed: "tas" "hflsd" "clt" "huss"
 # VARIABLES=("rh500") # 3D slices variables: "omega500" "omega850" "rh850" "rh500" 
-VARIABLES=("hus") # 3D variables: "ta" "omega" "hus" 
+# VARIABLES=("low_shear_magnitude_975hPa-800hPa" "deep_shear_magnitude_850hPa-400hPa") # 3D variables: "ta" "omega" "hus" 
+VARIABLES=("BL_CAPE" "BL_SUBSAT") # "thetae_bl" "thetae_lt_sat"
+# NOTE: For relative humidity (hur):
+# - If 'hur' is not available in the model output, it will be automatically computed
+#   from pressure, temperature (ta), and specific humidity (hus) using the
+#   Clausius-Clapeyron equation
+# - This is particularly useful for models like SCREAM that don't provide hur directly
 
 # 3D variable options (for pressure level data)
-PRESSURE_LEVELS=("500")
+PRESSURE_LEVELS=("") #850,800,750,700,600,500
 
 # Vertical velocity conversion options
 CONVERT_OMEGA_TO_WA=""  # Set to "--convert_omega_to_wa" to convert omega to wa

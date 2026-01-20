@@ -15,6 +15,7 @@ Last updated: November 2025
 import numpy as np
 import pandas as pd
 import xarray as xr
+from easygems import healpix as egh
 import sys
 
 
@@ -328,6 +329,70 @@ def compute_surface_wind_speed(ds):
     return sfcWind
 
 
+def compute_latent_heat_flux(ds):
+    """
+    Compute surface latent heat flux (hflssd) from instantaneous moisture flux.
+    
+    For datasets like ERA5 that provide 'ie' (instantaneous moisture flux in kg m⁻² s⁻¹)
+    instead of 'hflssd' (surface latent heat flux in W/m²), converts using:
+    
+    hflssd = -ie × Lv
+    
+    where Lv ≈ 2.26×10⁶ J/kg is the latent heat of vaporization.
+    
+    The negative sign accounts for ECMWF convention (positive downwards for vertical fluxes):
+    - ie > 0: moisture flux downward (condensation) → latent heat released downward
+    - ie < 0: moisture flux upward (evaporation) → latent heat absorbed upward
+    - hflssd > 0: heat flux upward (standard convention)
+    
+    Parameters:
+    -----------
+    ds : xarray.Dataset
+        Must contain either 'hflssd' or 'ie' variable
+    
+    Returns:
+    --------
+    xarray.DataArray
+        Surface latent heat flux in W/m²
+    """
+    # If hflsd already exists, return it
+    if 'hflsd' in ds:
+        print("  Using existing hflsd variable")
+        sys.stdout.flush()
+        return ds['hflsd']
+    
+    # Otherwise, try to compute from 'ie'
+    if 'ie' not in ds:
+        raise ValueError(
+            "Neither 'hflsd' nor 'ie' (instantaneous moisture flux) found in dataset. "
+            "Cannot compute latent heat flux."
+        )
+    
+    print("  Computing surface latent heat flux (hflsd) from instantaneous moisture flux (ie)...")
+    sys.stdout.flush()
+    
+    # Physical constant: latent heat of vaporization (J/kg)
+    Lv = 2.26e6
+    
+    # Convert: hflsd = -ie × Lv
+    # Units: kg m⁻² s⁻¹ × J/kg = J m⁻² s⁻¹ = W/m²
+    hflsd = -ds['ie'] * Lv
+    
+    hflsd.attrs = {
+        'long_name': 'Surface Upward Latent Heat Flux',
+        'units': 'W m-2',
+        'standard_name': 'surface_upward_latent_heat_flux',
+        'description': 'Surface latent heat flux computed from instantaneous moisture flux',
+        'formula': 'hflsd = -ie × 2.26e6',
+        'note': 'Negative sign accounts for ECMWF positive-downward convention; positive values indicate upward heat flux (evaporation)'
+    }
+    
+    print("  Surface latent heat flux computed")
+    sys.stdout.flush()
+    
+    return hflsd
+
+
 def compute_relative_humidity(ds):
     """
     Compute relative humidity (hur) from pressure, temperature, and specific humidity.
@@ -471,13 +536,20 @@ def apply_model_fixes(ds, model_name):
     
     # ===== FIX FOR IFS MODEL =====
     # IFS uses 'value' and 'cell' dimensions instead of standard names
+    # if 'ifs' in model_name.lower():
     if 'value' in ds.dims and 'cell' in ds.dims:
         print("  Detected IFS model format (value/cell dimensions)")
         sys.stdout.flush()
+        cell_values = ds.coords['cell'].values
+        ds = ds.drop_dims('cell')
+        ds = ds.rename({'value': 'cell'})
+        ds = ds.assign_coords({'cell': cell_values})
+        ds = ds.pipe(egh.attach_coords, signed_lon=True)
+        print("Swapped 'value' → 'cell' dimension")
         
-        # Rename dimensions
-        ds = ds.rename({'value': 'time', 'cell': 'ncells'})
-        print("  Renamed: 'value' → 'time', 'cell' → 'ncells'")
+        # # Rename dimensions
+        # ds = ds.rename({'value': 'time', 'cell': 'ncells'})
+        # print("  Renamed: 'value' → 'time', 'cell' → 'ncells'")
         
         # IFS may have different variable names
         # var_rename_map = {}
@@ -492,7 +564,11 @@ def apply_model_fixes(ds, model_name):
             'sp': 'ps',     # surface pressure
             '10u': 'uas',   # 10m eastward wind
             '10v': 'vas',   # 10m northward wind
-            '2d': 'tdas'    # 2m dew point temperature
+            '2d': 'tdas',    # 2m dew point temperature
+            'sshf': 'hfssd',  # surface sensible heat flux
+            'slhf': 'hflsd',  # surface latent heat flux
+            '10si': 'sfcWind',  # surface wind speed at 10m
+            
         }
         
         vars_to_rename = {}

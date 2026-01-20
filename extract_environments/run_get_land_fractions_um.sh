@@ -13,15 +13,15 @@ conda activate /global/common/software/m1867/python/lp_env/easy
 
 # ===== PATHS AND FILES =====
 ROOT_DIR="/global/cfs/cdirs/m4581/gsharing/hackathon"
-# TRACK_FILE="${ROOT_DIR}/tracking/mcs/um_glm_n2560_RAL3p3/stats/mcs_tracks_final_20200201.0000_20210301.0000.nc" #UM
-TRACK_FILE="${ROOT_DIR}/tracking/mcs/icon_d3hp003/stats/mcs_tracks_final_20200102.0000_20201231.2330.nc" #ICON
+TRACK_FILE="${ROOT_DIR}/tracking/mcs/um_glm_n2560_RAL3p3/stats/mcs_tracks_final_20200201.0000_20210301.0000.nc" #UM
+# TRACK_FILE="${ROOT_DIR}/tracking/mcs/icon_d3hp003/stats/mcs_tracks_final_20200102.0000_20201231.2330.nc" #ICON
 OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/"
 mkdir -p $OUTPUT_DIR
 
 # ===== MODEL AND CATALOG SETTINGS =====
 CATALOG_URL="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"
-CURRENT_LOCATION="NERSC" #"online"
-CATALOG_MODEL="icon_d3hp003" #"um_glm_n2560_RAL3p3"
+CURRENT_LOCATION="online" #"NERSC"
+CATALOG_MODEL="um_glm_n2560_RAL3p3" #"icon_d3hp003"
 CATALOG_PARAMS='{"zoom": 8}'
 LAND_FRACTION_VAR="sftlf"
 
@@ -29,7 +29,7 @@ LAND_FRACTION_VAR="sftlf"
 RADII="5,3.5,2"
 LAT_VAR="meanlat"
 LON_VAR="meanlon"
-START_DATE="2020-01-01"
+START_DATE="2020-02-01"
 END_DATE="2021-03-01"
 OUTPUT_FORMAT="parquet"
 MODEL_TIME_FREQ="6H"  # Model output frequency (1H, 3H, 6H, etc.) - 

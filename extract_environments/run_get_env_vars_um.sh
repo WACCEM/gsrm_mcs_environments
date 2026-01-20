@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -N 1
 #SBATCH -C cpu
-#SBATCH -q debug
-#SBATCH -t 00:30:00
+#SBATCH -q regular
+#SBATCH -t 01:30:00
 #SBATCH -J extract_UM
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -28,7 +28,7 @@ mkdir -p $OUTPUT_DIR
 CATALOG_URL="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"
 CURRENT_LOCATION="online" # 
 CATALOG_MODEL="um_glm_n2560_RAL3p3" #
-CATALOG_PARAMS='{"zoom": 8}'  # For 3D UM data, use: '{"zoom": 8, "time": "PT3H"}'
+CATALOG_PARAMS='{"zoom": 8, "time": "PT3H"}'  # For 3D UM data, use: '{"zoom": 8, "time": "PT3H"}', otherwise '{"zoom": 8}'
 
 # Set spatial bounds
 MIN_LAT="-90"
@@ -50,18 +50,18 @@ BATCH_SIZE="500"
 MODEL_TIME_FREQ="3H"  # Model output frequency (1H, 3H, 6H, etc.) - UM is 3-hourly
 
 # Pre-computed variable options (leave empty if not using pre-computed data)
-PRECOMPUTED_DIR=""  # Directory with pre-computed files /pscratch/sd/p/paccini/temp/hackathon/wind_shear/UM
-PRECOMPUTED_PATTERN=""  # Filename pattern (optional), e.g."um_glm_n2560_RAL3p3_wind_shear_hp8_3H"
-TIME_RES=""  # Time resolution of pre-computed files, e.g. "PT3H"
+PRECOMPUTED_DIR="/global/cfs/cdirs/wcm_shr/hk25/output_buoyancy/um_glm_n2560_RAL3p3/"  # Directory with pre-computed files /pscratch/sd/p/paccini/temp/hackathon/wind_shear/UM
+PRECOMPUTED_PATTERN="um_glm_n2560_RAL3p3_2layers_BLcomponents_hp8_3H"  # Filename pattern (optional), e.g."um_glm_n2560_RAL3p3_wind_shear_hp8_3H"
+TIME_RES="PT3H"  # Time resolution of pre-computed files, e.g. "PT3H"
 
 # 3D variable options (for pressure level data)
 PRESSURE_LEVELS=("") # For 3D variables, specify levels: "850,500,300"
 CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 
 # Set variables to extract
-VARIABLES=("tas" "hflsd")  # Add more as needed: "tas" "hflsd" "clt" "huss"
-# VARIABLES=( "wa") # "wa" "hur" "hus" "deep_shear_magnitude"
-
+# VARIABLES=("tas" "hflsd")  # Add more as needed: "tas" "hflsd" "clt" "huss"
+# VARIABLES=("deep_shear_magnitude_850hPa-400hPa") # "wa" "hur" "hus" "deep_shear_magnitude"
+VARIABLES=("BL_TOT" "BL_CAPE" "BL_SUBSAT")
 # ===== EXAMPLE: Extract omega at 850 hPa from UM =====
 # Uncomment these lines to extract omega at 850 hPa:
 # CATALOG_MODEL="um_glm_n2560_RAL3p3"

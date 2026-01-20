@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -N 1
 #SBATCH -C cpu
-#SBATCH -q debug
-#SBATCH -t 00:30:00
+#SBATCH -q regular
+#SBATCH -t 01:30:00
 #SBATCH -J extract_IFS  
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -14,7 +14,7 @@ conda activate /global/common/software/m1867/python/lp_env/easy
 # Set up paths and parameters
 ROOT_DIR="/global/cfs/cdirs/m4581/gsharing/hackathon"
 TRACK_FILE="/pscratch/sd/p/paccini/IFS_mcs_hackathon/ifs_tco3999_rcbmf/stats/mcs_tracks_final_20200101.0000_20210228.2330.nc" #IFS
-OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/IFS_new_test" #IFS_all"
+OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/IFS_all" #IFS_all"
 
 # PRECOMPUTED LAND FRACTION DATA (from get_land_fractions.py output)
 LAND_FRACTION_FILE=""
@@ -37,7 +37,7 @@ MIN_LON="-180"
 MAX_LON="180"
 
 # Set radii for circular areas (in degrees)
-RADII="2" #"5,3.5,2"
+RADII="5,3.5,2"
 
 # Set track latitude/longitude variables
 LAT_VAR="meanlat"
@@ -47,22 +47,22 @@ LON_VAR="meanlon"
 LAND_THRESHOLD=""  # Leave empty to process all tracks, or set value like "0.1" for ocean only
 HOURS_BEFORE_INIT="24"  # Extract 24 hours before track initiation
 BATCH_SIZE="500"
-MODEL_TIME_FREQ="3H"  # When loading from catalog, suggested model output frequency when using 3D output: 6H; for pre-computed data. Use 3H for 2D and pre-computed variables 
+MODEL_TIME_FREQ="6H"  # When loading from catalog, suggested model output frequency when using 3D output: 6H; for pre-computed data. Use 3H for 2D and pre-computed variables 
 TIME_BATCH_SIZE="500"  # Default is 1000 for other models. When loading 3D output from catalog, use time_batch_size=500 to avoid memory issues.
 
 # Pre-computed variable options (leave empty if not using pre-computed data)
-PRECOMPUTED_DIR=""  # Directory with pre-computed files /pscratch/sd/p/paccini/temp/hackathon/wind_shear/IFS
-PRECOMPUTED_PATTERN=""  # Filename pattern (optional), e.g. "ifs_tco3999_rcbmf_wind_shear_hp7_3H"
-TIME_RES=""  # Time resolution of pre-computed files, e.g. "PT3H"
+PRECOMPUTED_DIR="/global/cfs/cdirs/wcm_shr/hk25/output_buoyancy/ifs_tco3999_rcbmf/"  # Directory with pre-computed files /pscratch/sd/p/paccini/temp/hackathon/wind_shear/IFS
+PRECOMPUTED_PATTERN="ifs_tco3999_rcbmf_2layers_BLcomponents_hp7_6H"  # Filename pattern (optional), e.g. "ifs_tco3999_rcbmf_wind_shear_hp7_3H"
+TIME_RES="PT6H"  # Time resolution of pre-computed files, e.g. "PT3H"
 
 # 3D variable options (for pressure level data)
-PRESSURE_LEVELS=("") # For 3D variables, specify levels: "850,500,300"
+PRESSURE_LEVELS=("") # For 3D variables, specify levels: "850,500,300" 850,800,750,700,600,500
 CONVERT_OMEGA_TO_WA=""  # Set to "--convert_omega_to_wa" to convert omega to wa
 
 # Set variables to extract
-VARIABLES=("prw")  # Add more as needed: "tas" "hflsd" "clt" "huss" "tcwv"
-# VARIABLES=("deep_shear_magnitude") # "omega" "hur"
-
+# VARIABLES=("hur")  # Add more as needed: "tas" "hflsd" "clt" "huss" "tcwv"
+# VARIABLES=("low_shear_magnitude_975hPa-800hPa" "deep_shear_magnitude_850hPa-400hPa") # "omega" "hur"
+VARIABLES=("BL_TOT" "BL_CAPE" "BL_SUBSAT" ) #"thetae_bl" "thetae_lt_sat"
 # ===== EXAMPLE: Extract wa at 850 hPa from IFS =====
 # Uncomment these lines to extract wa at 850 hPa:
 # CATALOG_MODEL="ifs_tco3999_rcbmf"
@@ -74,7 +74,7 @@ VARIABLES=("prw")  # Add more as needed: "tas" "hflsd" "clt" "huss" "tcwv"
 
 # Define monthly date ranges for processing
 DATE_RANGES=( 
-  "2020-01-01 2020-02-01"
+  "2020-01-01 2021-03-01"
 )
 
 # Check if land fraction file exists
@@ -118,7 +118,7 @@ if [ -n "$TIME_BATCH_SIZE" ]; then
 fi
 
 if [ -n "$LAND_FRACTION_FILE" ] && [ -n "$LAND_THRESHOLD" ]; then
-    srun -n 1 -c 32 --cpu_bind=cores python get_env_vars_time_batching.py.py \
+    srun -n 1 -c 32 --cpu_bind=cores python get_env_vars_time_batching.py \
       --catalog_url "$CATALOG_URL" \
       --current_location "$CURRENT_LOCATION" \
       --catalog_model "$CATALOG_MODEL" \
@@ -140,7 +140,7 @@ if [ -n "$LAND_FRACTION_FILE" ] && [ -n "$LAND_THRESHOLD" ]; then
       --land_threshold "$LAND_THRESHOLD" \
       $OPTIONAL_PARAMS
 elif [ -n "$LAND_FRACTION_FILE" ]; then
-    srun -n 1 -c 32 --cpu_bind=cores python get_env_vars_time_batching.py.py \
+    srun -n 1 -c 32 --cpu_bind=cores python get_env_vars_time_batching.py \
       --catalog_url "$CATALOG_URL" \
       --current_location "$CURRENT_LOCATION" \
       --catalog_model "$CATALOG_MODEL" \
@@ -161,7 +161,7 @@ elif [ -n "$LAND_FRACTION_FILE" ]; then
       --land_fraction_file "$LAND_FRACTION_FILE" \
       $OPTIONAL_PARAMS
 else
-    srun -n 1 -c 32 --cpu_bind=cores python get_env_vars_time_batching.py.py \
+    srun -n 1 -c 32 --cpu_bind=cores python get_env_vars_time_batching.py \
       --catalog_url "$CATALOG_URL" \
       --current_location "$CURRENT_LOCATION" \
       --catalog_model "$CATALOG_MODEL" \

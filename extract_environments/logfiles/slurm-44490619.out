@@ -1,0 +1,90 @@
+========================================================================
+Wind Shear Computation for ifs_tco3999_rcbmf
+========================================================================
+Model: ifs_tco3999_rcbmf
+Location: online
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/IFS
+Date range: 2020-01-01 to 2020-07-01
+========================================================================
+Executing: srun -n 1 -c 32 --cpu_bind=cores python compute_wind_shear.py   --catalog_url "https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"   --current_location "online"   --catalog_model "ifs_tco3999_rcbmf"   --model_time_freq "3H"   --catalog_params '{"zoom": 7}'   --output_dir "/pscratch/sd/p/paccini/temp/hackathon/wind_shear/IFS" --start_date "2020-01-01" --end_date "2020-07-01"
+======================================================================
+Wind Shear Computation Script
+======================================================================
+Model: ifs_tco3999_rcbmf
+Location: online
+Time resolution: 3H
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/IFS
+Date range: 2020-01-01 to 2020-07-01
+======================================================================
+
+Loading catalog and dataset...
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset ifs_tco3999_rcbmf...
+/global/common/software/m1867/python/lp_env/easy/lib/python3.12/site-packages/intake_xarray/base.py:21: FutureWarning: The return type of `Dataset.dims` will be changed to return a set of dimension names in future, in order to be more consistent with `DataArray.dims`. To access a mapping from dimension names to lengths, please use `Dataset.sizes`.
+  'dims': dict(self._ds.dims),
+/global/common/software/m1867/python/lp_env/easy/lib/python3.12/site-packages/xarray/groupers.py:498: FutureWarning: 'H' is deprecated and will be removed in a future version, please use 'h' instead.
+  self.index_grouper = pd.Grouper(
+Resampling IFS data from hourly to 3H...
+After resampling: 3401 time steps
+Dataset loaded successfully
+/global/cfs/cdirs/wcm_code/lpaccini/scripts/waccem_repo_scripts/gsrm_mcs_environments/extract_environments/compute_wind_shear.py:493: FutureWarning: The return type of `Dataset.dims` will be changed to return a set of dimension names in future, in order to be more consistent with `DataArray.dims`. To access a mapping from dimension names to lengths, please use `Dataset.sizes`.
+  print(f"Dataset loaded. Dimensions: {dict(ds.dims)}")
+Dataset loaded. Dimensions: {'time': 3401, 'value': 196608, 'level': 25, 'level_snow': 5, 'cell': 196608}
+Available variables: ['100si', '100u', '100v', '10si', '10u', '10v', '2d', '2t', 'blh', 'cc', 'chnk', 'ci', 'ciwc', 'clwc', 'crwc', 'cswc', 'e', 'ewss', 'fdir', 'hcc', 'i10fg', 'lcc', 'lgws', 'litota1', 'lsp', 'lwcs', 'mcc', 'mgws', 'msl', 'mucape', 'nsss', 'pv', 'q', 'r', 'rsn', 'sd', 'sd_by_level', 'sf', 'skt', 'slhf', 'sp', 'sro', 'sshf', 'ssr', 'ssrc', 'ssrd', 'ssrdc', 'ssro', 'sst', 'stl1', 'stl2', 'stl3', 'stl4', 'str', 'strc', 'strd', 'swvl1', 'swvl2', 'swvl3', 'swvl4', 't', 'tcc', 'tciw', 'tclw', 'tcrw', 'tcsw', 'tcwv', 'tisr', 'tp', 'tprate', 'tsr', 'tsrc', 'ttr', 'ttrc', 'u', 'v', 'viwve', 'viwvn', 'w', 'z']
+
+Applying fixes for model: ifs_tco3999_rcbmf
+  Detected IFS model: Applying dimension and variable name fixes...
+    Swapped 'value' → 'cell' dimension
+    Renamed 'level' → 'pressure' dimension
+    Renamed variables: {'t': 'ta', 'w': 'omega', 'q': 'hus', 'r': 'hur', 'u': 'ua', 'v': 'va', '2t': 'tas', '2d': 'tdas', 'sp': 'ps'}
+  IFS model fixes complete
+
+Filtering data: 2020-01-01 to 2020-07-01
+
+Processing data by month...
+
+Processing 2020-01...
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/IFS/ifs_tco3999_rcbmf_wind_shear_hp7_3H.202001.nc
+
+Processing 2020-02...
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/IFS/ifs_tco3999_rcbmf_wind_shear_hp7_3H.202002.nc
+
+Processing 2020-03...
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/IFS/ifs_tco3999_rcbmf_wind_shear_hp7_3H.202003.nc
+
+Processing 2020-04...
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 400] hPa (no conversion needed)
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 100] hPa (no conversion needed)
+  Computing low-shear (400 hPa - 1000 hPa)...
+    Low-shear computed successfully
+  Computing deep-shear (850 hPa - 100 hPa)...
+    Deep-shear computed successfully
+slurmstepd: error: *** STEP 44490619.0 ON nid004294 CANCELLED AT 2025-10-28T04:50:03 DUE TO TIME LIMIT ***
+slurmstepd: error: *** JOB 44490619 ON nid004294 CANCELLED AT 2025-10-28T04:50:03 DUE TO TIME LIMIT ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.

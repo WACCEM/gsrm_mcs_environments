@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -N 1
 #SBATCH -C cpu
-#SBATCH -q debug
-#SBATCH -t 00:30:00
+#SBATCH -q regular
+#SBATCH -t 01:20:00
 #SBATCH -J extract_scream_masks
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -15,7 +15,7 @@ conda activate /global/common/software/m1867/python/lp_env/easy
 ROOT_DIR="/pscratch/sd/w/wcmca1/hackathon/mcs/scream/"
 TRACK_FILE="${ROOT_DIR}/stats/mcs_tracks_final_20190801.0000_20200901.0000.nc"
 MASK_FILE="${ROOT_DIR}/mcstracking/scream2D_hrly_mcsmask_hp8_v1.zarr"
-OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/SCREAM_all/from_masks"
+OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/SCREAM_all/from_masks_v2"
 
 # Create output directory if it doesn't exist
 mkdir -p $OUTPUT_DIR
@@ -47,7 +47,7 @@ CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 CONVERT_OMEGA_TO_WA=""  # Set to "--convert_omega_to_wa" to convert omega to wa
 
 # Set variables to extract
-VARIABLES=("sfcWind" "huss" )  # Add more as needed: "prw" "hflsd" "clt" "sfcWind" hflsd
+VARIABLES=( "hfssd" "tas" )  # Add more as needed: "prw" "hflsd" "clt" "sfcWind" "ps" "hflsd"
 
 
 # ===== EXAMPLE: Extract surface wind speed =====

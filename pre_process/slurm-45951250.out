@@ -1,0 +1,151 @@
+========================================================================
+Wind Shear Computation for nicam_gl11
+========================================================================
+Model: nicam_gl11
+Location: NERSC
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/NICAM
+Date range: 2020-12-01 to 2021-03-01
+========================================================================
+Executing: srun -n 1 -c 32 --cpu_bind=cores python compute_wind_shear.py   --catalog_url "https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"   --current_location "NERSC"   --catalog_model "nicam_gl11"   --model_time_freq "6H"   --catalog_params '{"zoom": 8, "time": "PT6H"}'   --output_dir "/pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/NICAM"   --low_shear_levels "1000,800; 975,800; 950,800"   --deep_shear_levels "850,400; 800,400" --start_date "2020-12-01" --end_date "2021-03-01"
+======================================================================
+Wind Shear Computation Script
+======================================================================
+Model: nicam_gl11
+Location: NERSC
+Time resolution: 6H
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/NICAM
+Date range: 2020-12-01 to 2021-03-01
+
+Pressure level ranges:
+  Low-level shear:  [(1000, 800), (975, 800), (950, 800)]
+  Deep-layer shear: [(850, 400), (800, 400)]
+======================================================================
+
+Loading catalog and dataset...
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset nicam_gl11...
+/global/common/software/m1867/python/lp_env/easy/lib/python3.12/site-packages/intake_xarray/base.py:21: FutureWarning: The return type of `Dataset.dims` will be changed to return a set of dimension names in future, in order to be more consistent with `DataArray.dims`. To access a mapping from dimension names to lengths, please use `Dataset.sizes`.
+  'dims': dict(self._ds.dims),
+Dataset loaded successfully
+
+Applying fixes for model: nicam_gl11
+  Renamed dimension: 'lev' → 'pressure'
+/global/cfs/cdirs/wcm_code/lpaccini/scripts/waccem_repo_scripts/gsrm_mcs_environments/pre_process/compute_wind_shear.py:620: FutureWarning: The return type of `Dataset.dims` will be changed to return a set of dimension names in future, in order to be more consistent with `DataArray.dims`. To access a mapping from dimension names to lengths, please use `Dataset.sizes`.
+  print(f"Dataset loaded. Dimensions: {dict(ds.dims)}")
+Dataset loaded. Dimensions: {'time': 1460, 'pressure': 25, 'cell': 786432}
+Available variables: ['hur', 'hus', 'qall', 'ta', 'ua', 'va', 'wa', 'zg']
+
+Filtering data: 2020-12-01 to 2021-03-01
+
+Processing data by month...
+
+Processing 2021-01...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  File exists, checking for new variables...
+    All variables already exist in file
+
+Processing 2021-02...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  File exists, checking for new variables...
+    All variables already exist in file
+
+Processing 2021-03...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  File exists, checking for new variables...
+    All variables already exist in file
+
+Processing 2020-12...
+  Computing low-shear for 3 range(s)...
+    Range: 800 hPa - 1000 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [1000, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_1000hPa-800hPa, low_shear_direction_1000hPa-800hPa
+    Range: 800 hPa - 975 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [975, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_975hPa-800hPa, low_shear_direction_975hPa-800hPa
+    Range: 800 hPa - 950 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [950, 800] hPa (no conversion needed)
+      ✓ low_shear_magnitude_950hPa-800hPa, low_shear_direction_950hPa-800hPa
+  Computing deep-shear for 2 range(s)...
+    Range: 400 hPa - 850 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_850hPa-400hPa, deep_shear_direction_850hPa-400hPa
+    Range: 400 hPa - 800 hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [800, 400] hPa (no conversion needed)
+      ✓ deep_shear_magnitude_800hPa-400hPa, deep_shear_direction_800hPa-400hPa
+  Created new file: /pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/NICAM/nicam_gl11_wind_shear_hp8_6H.202012.nc
+
+======================================================================
+Processing complete!
+======================================================================
+
+========================================================================
+Processing complete at Tue 02 Dec 2025 07:04:27 PM PST
+========================================================================

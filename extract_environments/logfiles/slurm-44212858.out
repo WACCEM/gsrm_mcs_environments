@@ -1,0 +1,111 @@
+
+Currently Loaded Modules:
+  1) craype-x86-milan
+  2) libfabric/1.22.0
+  3) craype-network-ofi
+  4) xpmem/2.9.7-1.1_20250411150514__g191b5f8bea4c
+  5) PrgEnv-gnu/8.5.0
+  6) cray-dsmml/0.3.0
+  7) cray-libsci/24.07.0
+  8) cray-mpich/8.1.30
+  9) craype/2.7.32
+ 10) gcc-native/13.2
+ 11) perftools-base/24.07.0
+ 12) cpe/24.07
+ 13) cudatoolkit/12.4
+ 14) craype-accel-nvidia80
+ 15) gpu/1.0
+ 16) sqs/2.0
+ 17) darshan/default
+ 18) conda/Miniforge3-24.7.1-0
+ 19) python/3.11
+
+ 
+
+WARNING: Land fraction file not found: 
+Will process all tracks without land fraction filtering.
+Starting environmental variable extraction...
+Processing 2 variable(s) across 1 date range(s)
+================================================
+Processing all variables: hur wa
+================================================
+Processing 1 date ranges
+============================================================
+Environmental Variable Extraction
+============================================================
+Model: icon_d3hp003
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/ICON_all
+Variables: hur, wa
+Number of date ranges: 1
+============================================================
+Using radii: [5.  3.5 2. ]
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset icon_d3hp003...
+Computing HEALPix grid...
+Grid: nside=256
+Loading MCS track data from /global/cfs/cdirs/m4581/gsharing/hackathon/tracking/mcs/icon_d3hp003/stats/mcs_tracks_final_20200102.0000_20201231.2330.nc
+Loaded 28325050 total track-time points
+After dropping NaN positions: 818949 valid track time points
+After spatial filtering: 0 track time points
+This dataset will be reused for all 2 variable(s) and 1 date range(s)
+Calculating HEALPix indices...
+Using pressure levels: [850.0] hPa
+
+============================================================
+Processing variable 1/2: hur
+============================================================
+Setting up variable data (hur)...
+3D variable detected with pressure dimension
+Requested pressure levels: [850.0] hPa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converting pressure levels from hPa to Pa: [850.0] hPa → [85000.0] Pa
+Variable data ready
+
+============================================================
+Processing date range 1/1
+Date range: 2020-01-02 to 2021-01-01
+============================================================
+Filtered to 0 track time points for this date range
+WARNING: No tracks in date range 2020-01-02 to 2021-01-01, skipping
+
+============================================================
+VARIABLE hur COMPLETED
+============================================================
+Processed 1 date range(s)
+Total time for hur: 25.28 seconds (0.42 minutes)
+============================================================
+
+============================================================
+Processing variable 2/2: wa
+============================================================
+Converting vertical velocity (wa) to pressure velocity (omega)...
+🌬️ Converting vertical velocity (wa) to pressure velocity (omega)...
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converting pressure levels from hPa to Pa: [850.0] hPa → [85000.0] Pa
+✅ Omega conversion complete. Pressure levels: [850.0] hPa
+Variable data ready (omega)
+
+============================================================
+Processing date range 1/1
+Date range: 2020-01-02 to 2021-01-01
+============================================================
+Filtered to 0 track time points for this date range
+WARNING: No tracks in date range 2020-01-02 to 2021-01-01, skipping
+
+============================================================
+VARIABLE omega COMPLETED
+============================================================
+Processed 1 date range(s)
+Total time for omega: 34.04 seconds (0.57 minutes)
+============================================================
+
+============================================================
+ALL VARIABLES AND DATE RANGES COMPLETED
+============================================================
+Processed 2 variable(s)
+Processed 1 date range(s) per variable
+Total time: 88.40 seconds (1.47 minutes)
+Average per variable: 44.20 seconds
+============================================================
+Completed processing for all variables
+All processing complete at Tue 21 Oct 2025 02:54:52 AM PDT

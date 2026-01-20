@@ -1,0 +1,131 @@
+WARNING: Land fraction file not found: 
+Will process all tracks without land fraction filtering.
+Starting environmental variable extraction...
+Processing 1 variable(s) across 1 date range(s)
+================================================
+Processing all variables: omega
+================================================
+Processing 1 date ranges
+============================================================
+Environmental Variable Extraction
+============================================================
+Model: ifs_tco3999_rcbmf
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/IFS_all
+Variables: omega
+Number of date ranges: 1
+============================================================
+Using radii: [5.  3.5 2. ]
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset ifs_tco3999_rcbmf...
+Resampling IFS data from hourly to 6H...
+After resampling: 1701 time steps
+Dataset loaded successfully
+Detected IFS model: Applying dimension and variable name fixes...
+Swapped 'value' → 'cell' dimension
+Renamed 'level' → 'pressure' dimension
+Renamed variables: {'t': 'ta', 'w': 'omega', 'q': 'hus', 'r': 'hur', '2t': 'tas'}
+IFS model fixes complete
+Computing HEALPix grid...
+Grid: nside=128
+Loading MCS track data from /pscratch/sd/p/paccini/IFS_mcs_hackathon/ifs_tco3999_rcbmf/stats/mcs_tracks_final_20200101.0000_20210228.2330.nc
+Loaded 21012550 total track-time points
+After dropping NaN positions: 709549 valid track time points
+After spatial filtering: 698492 track time points
+This dataset will be reused for all 1 variable(s) and 1 date range(s)
+Calculating HEALPix indices...
+Using pressure levels: [500.0] hPa
+
+============================================================
+Processing variable 1/1: omega
+============================================================
+Setting up variable data (omega)...
+3D variable detected with pressure dimension
+Requested pressure levels: [500.0] hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [500.0] hPa (no conversion needed)
+Selected single pressure level: 500.0 hPa
+Variable is now 2D (cell, time) - ready for efficient loading
+Variable data ready
+
+============================================================
+Processing date range 1/1
+Date range: 2020-01-01 to 2021-03-01
+============================================================
+Filtered to 698492 track time points for this date range
+Subsampling tracks to model frequency: 6H
+Subsampled from 698492 to 129624 time points (81.4% reduction)
+
+Aligning track times to dataset times...
+Aligning track times to dataset times...
+  Dataset has 1701 time steps
+  Original unique times: 10199
+  Aligned unique times: 1701
+  Reduction: 83.3%
+Calculating circular areas for 129624 track positions...
+  Progress: 0/129624 positions processed...
+  Progress: 50000/129624 positions processed...
+  Progress: 100000/129624 positions processed...
+Calculated circular areas for 388872 track-time-radius combinations
+Extracting pre-convective areas (first time step per track)...
+Extracted pre-convective areas for 32327 tracks
+Creating track time mapping...
+Extracting omega statistics for track duration...
+Loading omega data for 172474 pixels and 1701 time steps...
+Using time batching: 4 batches of up to 500 time steps
+  Loading time batch 1/4: 500 times...
+  Loading time batch 2/4: 500 times...
+  Loading time batch 3/4: 500 times...
+  Loading time batch 4/4: 201 times...
+Successfully loaded data for 1701 time steps
+Time mapping created: 1701 requested → 1701 actual times
+Processing 388872 areas with batched approach (batch_size=500)...
+  Progress: 100000/388872 areas processed...
+  Progress: 200000/388872 areas processed...
+  Progress: 300000/388872 areas processed...
+Extracted omega statistics for 388872 combinations
+Adding pre-convective data (24 hours before initiation)...
+Collecting all pre-convective times and pixels for 32327 tracks...
+Loading pre-convective data: 161672 pixels × 1703 times...
+Using time batching: 4 batches of up to 500 time steps
+  Loading pre-convective time batch 1/4: 500 times...
+  Loading pre-convective time batch 2/4: 500 times...
+  Loading pre-convective time batch 3/4: 500 times...
+  Loading pre-convective time batch 4/4: 203 times...
+Pre-convective data loaded successfully: 1699 time steps
+Extracting pre-convective statistics for 32327 tracks...
+  Processed 10000/32327 tracks, extracted 120000 data points.
+  Processed 20000/32327 tracks, extracted 240000 data points.
+  Processed 30000/32327 tracks, extracted 360000 data points.
+  Completed processing all 32327 tracks
+Added 387924 pre-convective data points
+Results saved to: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/IFS_all/omega/mcs_env_omega_20200101_20210301_omega_500hPa.parquet
+
+============================================================
+SUMMARY STATISTICS - omega - Date range 1/1
+============================================================
+Total tracks processed: 32327
+Total data points: 776796
+Radii processed: [5.  3.5 2. ]
+Variable: omega
+Time range: -24.0h to 444.0h
+
+Extraction completed in 3268.20 seconds (54.47 minutes)
+============================================================
+
+============================================================
+VARIABLE omega COMPLETED
+============================================================
+Processed 1 date range(s)
+Total time for omega: 3268.21 seconds (54.47 minutes)
+============================================================
+
+============================================================
+ALL VARIABLES AND DATE RANGES COMPLETED
+============================================================
+Processed 1 variable(s)
+Processed 1 date range(s) per variable
+Total time: 3284.20 seconds (54.74 minutes)
+Average per variable: 3284.20 seconds
+============================================================
+Completed processing for all variables
+All processing complete at Mon 27 Oct 2025 01:06:46 PM PDT

@@ -2,7 +2,7 @@
 #SBATCH -A m1867
 #SBATCH -C cpu
 #SBATCH -q regular
-#SBATCH -t 03:00:00
+#SBATCH -t 01:45:00
 #SBATCH -N 1
 #SBATCH -J era5_env_stats
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -56,8 +56,8 @@ TRACK_LIST=""  # Path to file with track IDs to process (leave empty to process 
 # VARIABLES=("TCWV" "VAR_2T" "SP" "ISHF")
 
 # Example 2: Process derived variables (uncomment to use)
-VARIABLES=("rh_850mb" "rh_500mb" "w_850mb" "w_500mb" "q_850mb" "q_500mb")
-# VARIABLES=("rh_850mb" "rh_500mb" "w_850mb")
+# VARIABLES=("rh_850mb" "rh_500mb" "w_850mb" "w_500mb" "q_850mb" "q_500mb")
+VARIABLES=("shear_mag_0to2km" "shear_mag_0to6km" "shear_mag_0to10km")
 
 # Example 3: Process all variables
 # VARIABLES=("TCWV" "VAR_2T" "SP" "ISHF" "rh_850mb" "rh_500mb" "w_850mb" "w_500mb" "q_850mb" "q_500mb")

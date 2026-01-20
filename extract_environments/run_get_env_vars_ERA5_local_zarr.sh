@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH -N 1
 #SBATCH -C cpu
-#SBATCH -q regular  
-#SBATCH -t 01:00:00
-#SBATCH -J extract_era5imergv7
+#SBATCH -q debug  
+#SBATCH -t 00:30:00
+#SBATCH -J extract_era5
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
 #SBATCH --mail-type=FAIL,END
@@ -18,7 +18,7 @@ conda activate /global/common/software/m1867/python/lp_env/easy
 ROOT_DIR="/global/cfs/cdirs/wcm_shr/hk25/mcs/"
 # TRACK_FILE="${ROOT_DIR}/IMERGv7/stats/mcs_tracks_final_20190801.0000_20200901.0000.nc" #IMERGv7
 TRACK_FILE="/pscratch/sd/f/feng045/waccem/mcs_global/stats/mcs_tracks_final_extc_20200101.0000_20210101.0000.nc" #IMERGv6
-OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/era5" #ERA5_IMERGv7_all"
+OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/era5" #ERA5_IMERGv7_all" #" #
 
 # PRECOMPUTED LAND FRACTION DATA (from get_land_fractions.py output)
 LAND_FRACTION_FILE="" #/pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/mcs_land_fractions_scream_ne120_zoom8_summary.parquet"
@@ -29,8 +29,8 @@ mkdir -p $OUTPUT_DIR
 # ===== PARAMETERS TO CUSTOMIZE =====
 # ===== OPTION 1: Direct zarr file (e.g., ERA5, observations) =====
 # Uncomment to use ERA5 or other zarr files directly
-ZARR_PATH="/pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr"
-ZARR_MODEL_NAME="era5"  # Used for output naming and model-specific fixes
+ZARR_PATH="/pscratch/sd/w/wcmca1/hackathon/healpix/era5/era5_3H_zoom8_20190101_20211231_v0.zarr" #
+ZARR_MODEL_NAME="era5"  # Used for output naming and model-specific fixes era5
 
 # ===== OPTION 2: Catalog-based models (SCREAM, ICON, IFS, etc.) =====
 # Uncomment to use catalog instead of direct zarr
@@ -63,15 +63,15 @@ MODEL_TIME_FREQ="3H"  # Model output frequency (1H, 3H, 6H, etc.) - SCREAM is 3-
 TIME_BATCH_SIZE="1000"  # Default is 1000 for other models. When loading 3D output from catalog, use time_batch_size=500 to avoid memory issues.
 
 # Pre-computed variable options (leave empty if not using pre-computed data)
-PRECOMPUTED_DIR="/pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/"  # Directory with pre-computed files, e.g. /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/
-PRECOMPUTED_PATTERN="era5_wind_shear_hp8_3H"  # Filename pattern (optional), e.g. "era5_wind_shear_hp8_3H"
+PRECOMPUTED_DIR="/global/cfs/cdirs/wcm_shr/hk25/output_buoyancy/era5/"  # Directory with pre-computed files, e.g. /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5/
+PRECOMPUTED_PATTERN="era5_2layers_BLcomponents_hp8_1H"  # Filename pattern (optional), e.g. "era5_wind_shear_hp8_3H"
 TIME_RES="PT3H"  # Time resolution of pre-computed files, e.g. "PT3H"
 
 # Set variables to extract
 # VARIABLES=( "prw")  # 2D variables: Add more as needed: "tas" "hflsd" "clt" "huss"
-VARIABLES=("low_shear_magnitude") # 3D slices variables: "omega500" "omega850" "rh850" "rh500" 
-# VARIABLES=("hur" "omega" "hus") # 3D variables: "ta" "omega" "hus" 
-
+# VARIABLES=("low_shear_magnitude") # 3D slices variables: "omega500" "omega850" "rh850" "rh500" 
+# VARIABLES=("hur" ) # 3D variables: "ta" "omega" "hus" "omega" "hus"
+VARIABLES=("BL_CAPE" "BL_SUBSAT") #"BL_TOT" ) #
 # NOTE: For relative humidity (hur):
 # - If 'hur' is not available in the model output, it will be automatically computed
 #   from pressure, temperature (ta), and specific humidity (hus) using the
@@ -79,7 +79,7 @@ VARIABLES=("low_shear_magnitude") # 3D slices variables: "omega500" "omega850" "
 # - This is particularly useful for models like SCREAM that don't provide hur directly
 
 # 3D variable options (for pressure level data)
-PRESSURE_LEVELS=("")
+PRESSURE_LEVELS=("") # 850,800,750,700,500
 
 # Vertical velocity conversion options
 CONVERT_OMEGA_TO_WA=""  # Set to "--convert_omega_to_wa" to convert omega to wa
@@ -118,10 +118,14 @@ CONVERT_OMEGA_TO_WA=""  # Set to "--convert_omega_to_wa" to convert omega to wa
 
 # Define date range for processing
 # OPTION 1: Process entire year at once (RECOMMENDED - avoids duplicate tracks at month boundaries)
+# For IMERGv7 tracks
+# DATE_RANGES=(
+#   "2019-08-01 2020-09-02"
+# )
+## For IMERGv6 tracks
 DATE_RANGES=(
-  "2019-08-01 2020-09-02"
+  "2020-01-01 2021-01-01"
 )
-
 # Check if land fraction file exists
 if [ ! -f "$LAND_FRACTION_FILE" ]; then
     echo "WARNING: Land fraction file not found: $LAND_FRACTION_FILE"

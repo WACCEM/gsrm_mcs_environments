@@ -26,13 +26,13 @@ import time
 import warnings
 from datetime import datetime, timedelta
 import intake
+from easygems import healpix as egh
 
 # Import utility functions
 from env_extraction_utils import (
     convert_time, parse_pressure_levels, normalize_pressure_levels,
     convert_w_to_omega, convert_omega_to_w, compute_surface_wind_speed,
-    apply_model_fixes, subsample_tracks_by_frequency,
-    align_track_times_to_model_frequency
+    compute_latent_heat_flux, apply_model_fixes, subsample_tracks_by_frequency
 )
 
 # Suppress warnings
@@ -82,11 +82,11 @@ def get_mask_cells_for_track(mask_data, track_id, track_time):
     Parameters:
     -----------
     mask_data : xarray.DataArray
-        Mask data with dimensions (time, cell)
+        Mask data with dimensions (time, cell) - should already contain the exact time
     track_id : int
         Track ID to find in mask
-    track_time : pd.Timestamp
-        Time to extract mask
+    track_time : timestamp
+        Time to extract mask (should already exist in mask_data.time)
     
     Returns:
     --------
@@ -94,8 +94,8 @@ def get_mask_cells_for_track(mask_data, track_id, track_time):
         Array of cell indices, or None if no cells found
     """
     try:
-        # Select nearest time
-        mask_at_time = mask_data.sel(time=track_time, method='nearest')
+        # Exact selection - times are standardized to pd.Timestamp in the batch
+        mask_at_time = mask_data.sel(time=track_time)
         
         # Find cells where mask == track_id
         cells = np.where(mask_at_time.values == track_id)[0]
@@ -117,11 +117,11 @@ def extract_statistics_from_mask(variable_data, mask_cells, data_time):
     Parameters:
     -----------
     variable_data : xarray.DataArray
-        Variable to extract (dimensions should include 'time' and spatial dimension)
+        Variable to extract (dimensions should include 'time' and spatial dimension) - should already contain the exact time
     mask_cells : np.ndarray
         Array of cell indices to extract
-    data_time : pd.Timestamp
-        Time to extract from variable data
+    data_time : timestamp
+        Time to extract from variable data (should already exist in variable_data.time)
     
     Returns:
     --------
@@ -129,8 +129,8 @@ def extract_statistics_from_mask(variable_data, mask_cells, data_time):
         Dictionary with statistics (mean, median, min, max, std, count, num_valid)
     """
     try:
-        # Select nearest time in variable data
-        var_at_time = variable_data.sel(time=data_time, method='nearest')
+        # Exact selection - times are standardized to pd.Timestamp in the batch
+        var_at_time = variable_data.sel(time=data_time)
         
         # Determine spatial dimension name (ncells, cell, value, etc.)
         spatial_dims = [d for d in var_at_time.dims if d != 'time']
@@ -171,15 +171,49 @@ def extract_statistics_from_mask(variable_data, mask_cells, data_time):
         return None
 
 
+def align_mask_times_to_model_frequency(mask_times, model_freq):
+    """
+    Filter mask times to align with model output frequency.
+    
+    This ensures that mask times are sampled at intervals matching the model frequency.
+    For example, for 3H model frequency, keep only times at 00:00, 03:00, 06:00, etc.
+    
+    Parameters:
+    -----------
+    mask_times : array-like
+        Array of mask times (as timestamps)
+    model_freq : str
+        Model frequency (e.g., '1H', '3H', '6H')
+    
+    Returns:
+    --------
+    numpy.ndarray
+        Filtered mask times aligned to model frequency
+    """
+    mask_times_pd = pd.to_datetime(mask_times)
+    
+    # Parse frequency to hours
+    freq_hours = int(model_freq.replace('H', '').replace('h', ''))
+    
+    # Keep only times where hour is divisible by freq_hours
+    mask = mask_times_pd.hour % freq_hours == 0
+    aligned_times = mask_times_pd[mask]
+    
+    print(f"  Aligned mask times from {len(mask_times)} to {len(aligned_times)} (model freq: {model_freq})")
+    sys.stdout.flush()
+    
+    return aligned_times.values
+
+
 def extract_variable_statistics_from_masks(track_df, mask_data, variable_data, 
                                            batch_size=50, variable_name='var', model_freq='3H'):
     """
     Extract variable statistics for all tracks using small_batch streaming approach.
     
-    This approach uses align_track_times_to_model_frequency utility to align track times
-    to model output times, then loads masks for small batches of unique times (batch_size 
-    at a time), processes all tracks at those times, then moves to the next batch. This 
-    amortizes I/O overhead by reusing loaded mask time slices across multiple tracks.
+    This approach uses subsample_tracks_by_frequency to filter track times to model frequency,
+    then loads masks for small batches of unique times (batch_size at a time), processes all 
+    tracks at those times, then moves to the next batch. This amortizes I/O overhead by reusing 
+    loaded mask time slices across multiple tracks.
     
     Parameters:
     -----------
@@ -194,7 +228,7 @@ def extract_variable_statistics_from_masks(track_df, mask_data, variable_data,
     variable_name : str
         Name of variable (for progress messages)
     model_freq : str
-        Model output frequency (e.g., '3H') for time alignment
+        Model output frequency (e.g., '3H') for subsampling
     
     Returns:
     --------
@@ -202,31 +236,44 @@ def extract_variable_statistics_from_masks(track_df, mask_data, variable_data,
         DataFrame with columns: track_id, time_idx, data_time, time_offset_hours,
                                 mean, median, min, max, std, count, num_valid
     """
-    print(f"\nExtracting {variable_name} statistics using track masks (align_track_times approach)...")
+    print(f"\nExtracting {variable_name} statistics using track masks (subsample approach)...")
     sys.stdout.flush()
     
     total_points = len(track_df)
-    print(f"  Processing {total_points} track-time combinations")
+    print(f"  Original track-time combinations: {total_points}")
     
-    # Use utility function to subsample tracks and align to model frequency
-    # This:
-    #   1. Subsamples each track every N hours from initiation (preserves start time)
-    #   2. Aligns subsampled times to nearest model output times
-    #   3. Returns df with 'base_time' (subsampled) and 'extraction_time' (aligned)
-    track_df = align_track_times_to_model_frequency(track_df.copy(), model_freq)
+    # Step 1: Subsample tracks to match model frequency
+    # Keeps times where (time - track_start) % model_freq == 0
+    track_df = subsample_tracks_by_frequency(track_df.copy(), model_freq)
+    print(f"  After track subsampling: {len(track_df)} track-time combinations")
     
-    # Get track start times for time offset calculation (use subsampled base_time)
+    # Step 2: Align mask times to model frequency
+    # This ensures mask data is also at model frequency intervals
+    print(f"\n  Aligning mask times to model frequency...")
+    sys.stdout.flush()
+    available_mask_times = pd.to_datetime(mask_data.time.values)
+    aligned_mask_times = align_mask_times_to_model_frequency(available_mask_times, model_freq)
+    
+    # Filter mask data to aligned times only
+    mask_data_aligned = mask_data.sel(time=aligned_mask_times)
+    print(f"  Mask data filtered to {len(aligned_mask_times)} time steps")
+    sys.stdout.flush()
+    
+    # Get track start times for time offset calculation
     track_start_times = track_df.groupby('track_id')['base_time'].first().to_dict()
     
-    # Group by unique EXTRACTION times for batched processing
-    unique_times = sorted(track_df['extraction_time'].unique())
+    # Group by unique base_time for batched processing
+    unique_times = sorted(track_df['base_time'].unique())
     n_unique_times = len(unique_times)
     
-    print(f"  Unique extraction times: {n_unique_times}")
+    print(f"\n  Processing {len(track_df)} track-time combinations across {n_unique_times} unique times")
     print(f"  Batch size: {batch_size} times per batch")
     sys.stdout.flush()
     
     results = []
+    failed_count = 0
+    no_mask_cells_count = 0
+    time_not_found_count = 0
     
     # Process in batches of unique times
     for batch_idx in range(0, n_unique_times, batch_size):
@@ -240,18 +287,37 @@ def extract_variable_statistics_from_masks(track_df, mask_data, variable_data,
             print(f"\n  Batch {batch_num}/{total_batches}: Loading {len(batch_times)} time slices...")
         sys.stdout.flush()
         
-        # Load mask and variable data for this batch of EXTRACTION times
-        # Use method='nearest' to handle any minor time mismatches
-        mask_batch = mask_data.sel(time=batch_times, method='nearest')
-        variable_batch = variable_data.sel(time=batch_times, method='nearest')
+        # Load mask and variable data for this batch of track times
+        # Use method='nearest' to handle any minor time mismatches between tracks and aligned masks
+        try:
+            mask_batch = mask_data_aligned.sel(time=batch_times, method='nearest').compute()
+            variable_batch = variable_data.sel(time=batch_times, method='nearest').compute()
+        except Exception as e:
+            print(f"  ERROR loading data for batch: {e}")
+            sys.stdout.flush()
+            continue
         
-        # Load into memory to avoid repeated lazy selections
-        sys.stdout.flush()
-        mask_batch = mask_batch.compute()
-        variable_batch = variable_batch.compute()
+        # Standardize time coordinates to pandas Timestamps for consistent selection
+        mask_batch['time'] = pd.to_datetime(mask_batch.time.values)
+        variable_batch['time'] = pd.to_datetime(variable_batch.time.values)
         
-        # Get all tracks at these EXTRACTION times
-        df_batch = track_df[track_df['extraction_time'].isin(batch_times)]
+        # Create time mapping: track_time -> actual_mask_time/model_time (as selected)
+        # The 'method=nearest' above may have selected different times than requested
+        actual_mask_times = mask_batch.time.values
+        actual_var_times = variable_batch.time.values
+        
+        time_mapping = {}
+        for i, requested_time in enumerate(batch_times):
+            if i < len(actual_mask_times) and i < len(actual_var_times):
+                # Ensure mask and variable times match
+                mask_time = pd.Timestamp(actual_mask_times[i])
+                var_time = pd.Timestamp(actual_var_times[i])
+                
+                # Use the mask time as reference (should be same as var_time)
+                time_mapping[requested_time] = mask_time
+        
+        # Get all tracks at these base times
+        df_batch = track_df[track_df['base_time'].isin(batch_times)]
         n_batch_tracks = len(df_batch)
         
         if batch_num % 10 == 0:
@@ -262,34 +328,41 @@ def extract_variable_statistics_from_masks(track_df, mask_data, variable_data,
         for idx, row in df_batch.iterrows():
             track_id = int(row['track_id'])
             time_idx = int(row['time_idx'])
-            extraction_time = pd.Timestamp(row['extraction_time'])
-            original_time = pd.Timestamp(row['base_time'])
+            track_time = pd.Timestamp(row['base_time'])
+            
+            # Map to the actual time that was selected
+            if track_time not in time_mapping:
+                time_not_found_count += 1
+                continue
+            
+            actual_time = time_mapping[track_time]
             
             try:
                 # Get mask cells for this track-time (from batched mask)
-                # Use extraction_time for extraction
+                # Use actual_time for exact selection (already loaded with nearest)
                 # Masks start at 1, track_ids (from stats file) start at 0
-                mask_cells = get_mask_cells_for_track(mask_batch, track_id + 1, extraction_time)
+                mask_cells = get_mask_cells_for_track(mask_batch, track_id + 1, actual_time)
 
                 if mask_cells is None or len(mask_cells) == 0:
+                    no_mask_cells_count += 1
                     continue
                 
                 # Extract statistics (from batched variable data)
-                # Use extraction_time for extraction
-                stats = extract_statistics_from_mask(variable_batch, mask_cells, extraction_time)
+                # Use actual_time for exact selection (already loaded with nearest)
+                stats = extract_statistics_from_mask(variable_batch, mask_cells, actual_time)
                 
                 if stats is None:
+                    failed_count += 1
                     continue
                 
-                # Calculate time offset from track start (use original base_time)
-                time_offset_hours = (original_time - track_start_times[track_id]).total_seconds() / 3600
+                # Calculate time offset from track start
+                time_offset_hours = (track_time - track_start_times[track_id]).total_seconds() / 3600
                 
-                # Store result with both data_time and extraction_time
+                # Store result (use actual_time as data_time to show actual extraction time)
                 result = {
                     'track_id': track_id,
                     'time_idx': time_idx,
-                    'data_time': extraction_time,  # Use extraction_time for data extraction
-                    'extraction_time': extraction_time,  # Also include as explicit column
+                    'data_time': actual_time,
                     'time_offset_hours': time_offset_hours,
                     **stats
                 }
@@ -297,8 +370,9 @@ def extract_variable_statistics_from_masks(track_df, mask_data, variable_data,
                 results.append(result)
                 
             except Exception as e:
-                print(f"    WARNING: Error processing track {track_id} at offset {time_idx}: {e}")
+                print(f"    WARNING: Error processing track {track_id} at time_idx {time_idx}: {e}")
                 sys.stdout.flush()
+                failed_count += 1
                 continue
         
         batch_elapsed = time.time() - batch_start_time
@@ -313,8 +387,17 @@ def extract_variable_statistics_from_masks(track_df, mask_data, variable_data,
     if len(result_df) > 0:
         result_df = result_df.sort_values(['track_id', 'time_idx']).reset_index(drop=True)
     
-    print(f"\n  Extracted statistics for {len(result_df)} track-time combinations")
-    print(f"  Unique tracks: {result_df['track_id'].nunique() if len(result_df) > 0 else 0}")
+    # Print diagnostic summary
+    print(f"\n  ============ EXTRACTION SUMMARY ============")
+    print(f"  Input track-time combinations: {len(track_df)}")
+    print(f"  Successful extractions: {len(result_df)}")
+    print(f"  Failed extractions breakdown:")
+    print(f"    - Time not found in mapping: {time_not_found_count}")
+    print(f"    - No mask cells found: {no_mask_cells_count}")
+    print(f"    - Statistics extraction failed: {failed_count}")
+    print(f"  Success rate: {100*len(result_df)/len(track_df):.1f}%" if len(track_df) > 0 else "  Success rate: N/A")
+    print(f"  Unique tracks processed: {result_df['track_id'].nunique() if len(result_df) > 0 else 0}")
+    print(f"  ============================================")
     sys.stdout.flush()
     
     return result_df
@@ -360,15 +443,21 @@ def main():
         description='Extract environmental variables using MCS track masks.'
     )
     
-    # Input/output options
-    parser.add_argument('--catalog_url', required=True,
-                        help='URL of the intake catalog')
+    # Input/output options - either zarr or catalog (mutually exclusive)
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument('--zarr_path',
+                            help='Path to zarr file (for direct zarr loading, e.g., ERA5)')
+    input_group.add_argument('--catalog_url',
+                            help='URL of the intake catalog (for catalog-based loading)')
+    
+    parser.add_argument('--zarr_model_name',
+                        help='Model name when using zarr_path (e.g., "era5")')
     parser.add_argument('--current_location', default="NERSC",
-                        help='Current location in catalog')
-    parser.add_argument('--catalog_model', required=True,
-                        help='Model name in the catalog')
-    parser.add_argument('--catalog_params', required=True,
-                        help='Catalog parameters as string (e.g., \'{"zoom": 8, "time": "PT3H"}\')')
+                        help='Current location in catalog (catalog mode only)')
+    parser.add_argument('--catalog_model',
+                        help='Model name in the catalog (catalog mode only)')
+    parser.add_argument('--catalog_params',
+                        help='Catalog parameters as string (e.g., \'{"zoom": 8, "time": "PT3H"}\') (catalog mode only)')
     parser.add_argument('--trackfile', required=True,
                         help='Path to MCS track statistics file (netCDF)')
     parser.add_argument('--mask_file', required=True,
@@ -414,10 +503,26 @@ def main():
     
     args = parser.parse_args()
     
+    # Validate arguments
+    if args.zarr_path and not args.zarr_model_name:
+        parser.error("--zarr_model_name is required when using --zarr_path")
+    if args.catalog_url and (not args.catalog_model or not args.catalog_params):
+        parser.error("--catalog_model and --catalog_params are required when using --catalog_url")
+    
+    # Determine model name for output and fixes
+    model_name = args.zarr_model_name if args.zarr_path else args.catalog_model
+    
     print("="*60)
     print("MASK-BASED ENVIRONMENTAL VARIABLE EXTRACTION")
     print("="*60)
-    print(f"Model: {args.catalog_model}")
+    if args.zarr_path:
+        print(f"Data source: Direct zarr file")
+        print(f"Zarr path: {args.zarr_path}")
+        print(f"Model: {model_name}")
+    else:
+        print(f"Data source: Intake catalog")
+        print(f"Catalog: {args.catalog_url}")
+        print(f"Model: {model_name}")
     print(f"Track file: {args.trackfile}")
     print(f"Mask file: {args.mask_file}")
     print(f"Variables: {args.variables}")
@@ -499,37 +604,70 @@ def main():
     mask_data = load_mask_file(args.mask_file, verbose=False)
     
     # =================================================================
-    # LOAD MODEL DATA FROM CATALOG
+    # LOAD MODEL DATA (ZARR OR CATALOG)
     # =================================================================
     print("\n" + "="*60)
-    print("LOADING MODEL DATA FROM CATALOG")
-    print("="*60)
-    sys.stdout.flush()
-    
-    # Parse catalog params
-    import ast
-    catalog_params = ast.literal_eval(args.catalog_params)
-    
-    print(f"Opening catalog: {args.catalog_url}")
-    print(f"Location: {args.current_location}")
-    print(f"Model: {args.catalog_model}")
-    print(f"Parameters: {catalog_params}")
-    sys.stdout.flush()
-    
-    # Open catalog at the specified location first, then access model
-    cat = intake.open_catalog(args.catalog_url)[args.current_location]
-    
-    ds = cat[args.catalog_model](**catalog_params).to_dask()
-    
-    # Apply model-specific fixes
-    ds = apply_model_fixes(ds, args.catalog_model)
-    
-    # Convert time coordinate
-    ds = ds.assign_coords(time=convert_time(ds.time.values))
-    
-    print(f"Dataset loaded: {list(ds.data_vars)}")
-    print(f"Dataset time range: {ds.time.values[0]} to {ds.time.values[-1]}")
-    sys.stdout.flush()
+    if args.zarr_path:
+        print("LOADING MODEL DATA FROM ZARR FILE")
+        print("="*60)
+        sys.stdout.flush()
+        
+        print(f"Opening zarr file: {args.zarr_path}")
+        sys.stdout.flush()
+        
+        # Open zarr with chunking
+        ds = xr.open_zarr(args.zarr_path, chunks={'time': 1, 'cell': -1})
+        
+        # Attach HEALPix coordinates
+        print("Attaching HEALPix coordinates...")
+        sys.stdout.flush()
+        ds = ds.pipe(egh.attach_coords, signed_lon=True)
+        
+        # Apply model-specific fixes
+        model_name = args.zarr_model_name
+        ds = apply_model_fixes(ds, model_name)
+        
+        # Convert time coordinate
+        print("Converting time coordinate...")
+        sys.stdout.flush()
+        ds = ds.assign_coords(time=convert_time(ds.time.values))
+        
+        print(f"Dataset loaded: {list(ds.data_vars)}")
+        print(f"Dataset dimensions: {list(ds.dims)}")
+        print(f"Dataset time range: {ds.time.values[0]} to {ds.time.values[-1]}")
+        sys.stdout.flush()
+    else:
+        print("LOADING MODEL DATA FROM CATALOG")
+        print("="*60)
+        sys.stdout.flush()
+        
+        # Parse catalog params
+        import ast
+        catalog_params = ast.literal_eval(args.catalog_params)
+        
+        print(f"Opening catalog: {args.catalog_url}")
+        print(f"Location: {args.current_location}")
+        print(f"Model: {args.catalog_model}")
+        print(f"Parameters: {catalog_params}")
+        sys.stdout.flush()
+        
+        # Open catalog at the specified location first, then access model
+        cat = intake.open_catalog(args.catalog_url)[args.current_location]
+        
+        ds = cat[args.catalog_model](**catalog_params).to_dask()
+        
+        # Apply model-specific fixes
+        ds = ds.pipe(egh.attach_coords, signed_lon=True)
+        model_name = args.catalog_model
+        ds = apply_model_fixes(ds, model_name)
+        
+        # Convert time coordinate
+        ds = ds.assign_coords(time=convert_time(ds.time.values))
+        
+        print(f"Dataset loaded: {list(ds.data_vars)}")
+        print(f"Dataset dimensions: {list(ds.dims)}")
+        print(f"Dataset time range: {ds.time.values[0]} to {ds.time.values[-1]}")
+        sys.stdout.flush()
     
     # Parse pressure levels if provided
     pressure_levels = None
@@ -569,6 +707,18 @@ def main():
                 print("sfcWind computed successfully")
             except Exception as e:
                 print(f"ERROR: Failed to compute sfcWind: {e}")
+                continue
+        
+        # Special case: hflssd computation (may use 'ie' for ERA5)
+        elif variable_name.lower() == 'hflssd':
+            print("Loading or computing surface latent heat flux (hflssd)...")
+            sys.stdout.flush()
+            
+            try:
+                variable_data = compute_latent_heat_flux(ds)
+                print("hflssd ready")
+            except Exception as e:
+                print(f"ERROR: Failed to get/compute hflssd: {e}")
                 continue
         
         # Special case: wa -> omega conversion

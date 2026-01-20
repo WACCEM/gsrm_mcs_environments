@@ -1,0 +1,159 @@
+
+Currently Loaded Modules:
+  1) craype-x86-milan
+  2) libfabric/1.22.0
+  3) craype-network-ofi
+  4) xpmem/2.9.7-1.1_20250411150514__g191b5f8bea4c
+  5) PrgEnv-gnu/8.5.0
+  6) cray-dsmml/0.3.0
+  7) cray-libsci/24.07.0
+  8) cray-mpich/8.1.30
+  9) craype/2.7.32
+ 10) gcc-native/13.2
+ 11) perftools-base/24.07.0
+ 12) cpe/24.07
+ 13) cudatoolkit/12.4
+ 14) craype-accel-nvidia80
+ 15) gpu/1.0
+ 16) sqs/2.0
+ 17) darshan/default
+ 18) conda/Miniforge3-24.7.1-0
+ 19) python/3.11
+
+ 
+
+WARNING: Land fraction file not found: /pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/mcs_land_fractions_icon_d3hp003_zoom8_summary.parquet
+Will process all tracks without land fraction filtering.
+Starting environmental variable extraction...
+Processing 1 variable(s) across 1 date range(s)
+================================================
+Processing all variables: hur
+================================================
+Processing 1 date ranges
+============================================================
+Environmental Variable Extraction
+============================================================
+Model: icon_d3hp003
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/ICON
+Variables: hur
+Number of date ranges: 1
+============================================================
+Using radii: [5.  3.5 2. ]
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset icon_d3hp003...
+Computing HEALPix grid...
+Grid: nside=256
+Loading MCS track data from /global/cfs/cdirs/m4581/gsharing/hackathon/tracking/mcs/icon_d3hp003/stats/mcs_tracks_final_20200102.0000_20201231.2330.nc
+Loaded 28325050 total track-time points
+After dropping NaN positions: 818949 valid track time points
+After spatial filtering: 595527 track time points
+This dataset will be reused for all 1 variable(s) and 1 date range(s)
+Calculating HEALPix indices...
+Using pressure levels: [850.0] hPa
+
+============================================================
+Processing variable 1/1: hur
+============================================================
+Setting up variable data (hur)...
+3D variable detected with pressure dimension
+Requested pressure levels: [850.0] hPa
+  Detected pressure units: Pascals (median value: 22500.0 Pa)
+  Converting pressure levels from hPa to Pa: [850.0] hPa → [85000.0] Pa
+Variable data ready
+
+============================================================
+Processing date range 1/1
+Date range: 2020-01-02 to 2021-01-01
+============================================================
+Filtered to 595527 track time points for this date range
+Subsampling tracks to model frequency: 6H
+Subsampled from 595527 to 114230 time points (80.8% reduction)
+Calculating circular areas for 114230 track positions...
+  Progress: 0/114230 positions processed...
+  Progress: 50000/114230 positions processed...
+  Progress: 100000/114230 positions processed...
+Calculated circular areas for 342690 track-time-radius combinations
+Extracting pre-convective areas (first time step per track)...
+Extracted pre-convective areas for 35760 tracks
+Creating track time mapping...
+Extracting hur statistics for track duration...
+Loading hur data for 431760 pixels and 8760 time steps...
+Time mapping created: 8760 requested → 8760 actual times
+Processing 342690 areas with batched approach (batch_size=500)...
+  Progress: 100000/342690 areas processed...
+  Progress: 200000/342690 areas processed...
+  Progress: 300000/342690 areas processed...
+Extracted hur statistics for 342690 combinations
+Adding pre-convective data (24 hours before initiation)...
+Collecting all pre-convective times and pixels for 35760 tracks...
+Loading pre-convective data: 420649 pixels × 8773 times...
+Pre-convective data loaded successfully
+Extracting pre-convective statistics for 35760 tracks...
+  Processed 1000/35760 tracks (2.8%), extracted 12000 data points so far
+  Processed 2000/35760 tracks (5.6%), extracted 24000 data points so far
+  Processed 3000/35760 tracks (8.4%), extracted 36000 data points so far
+  Processed 4000/35760 tracks (11.2%), extracted 48000 data points so far
+  Processed 5000/35760 tracks (14.0%), extracted 60000 data points so far
+  Processed 6000/35760 tracks (16.8%), extracted 72000 data points so far
+  Processed 7000/35760 tracks (19.6%), extracted 84000 data points so far
+  Processed 8000/35760 tracks (22.4%), extracted 96000 data points so far
+  Processed 9000/35760 tracks (25.2%), extracted 108000 data points so far
+  Processed 10000/35760 tracks (28.0%), extracted 120000 data points so far
+  Processed 11000/35760 tracks (30.8%), extracted 132000 data points so far
+  Processed 12000/35760 tracks (33.6%), extracted 144000 data points so far
+  Processed 13000/35760 tracks (36.4%), extracted 156000 data points so far
+  Processed 14000/35760 tracks (39.1%), extracted 168000 data points so far
+  Processed 15000/35760 tracks (41.9%), extracted 180000 data points so far
+  Processed 16000/35760 tracks (44.7%), extracted 192000 data points so far
+  Processed 17000/35760 tracks (47.5%), extracted 204000 data points so far
+  Processed 18000/35760 tracks (50.3%), extracted 216000 data points so far
+  Processed 19000/35760 tracks (53.1%), extracted 228000 data points so far
+  Processed 20000/35760 tracks (55.9%), extracted 240000 data points so far
+  Processed 21000/35760 tracks (58.7%), extracted 252000 data points so far
+  Processed 22000/35760 tracks (61.5%), extracted 264000 data points so far
+  Processed 23000/35760 tracks (64.3%), extracted 276000 data points so far
+  Processed 24000/35760 tracks (67.1%), extracted 288000 data points so far
+  Processed 25000/35760 tracks (69.9%), extracted 300000 data points so far
+  Processed 26000/35760 tracks (72.7%), extracted 312000 data points so far
+  Processed 27000/35760 tracks (75.5%), extracted 324000 data points so far
+  Processed 28000/35760 tracks (78.3%), extracted 336000 data points so far
+  Processed 29000/35760 tracks (81.1%), extracted 348000 data points so far
+  Processed 30000/35760 tracks (83.9%), extracted 360000 data points so far
+  Processed 31000/35760 tracks (86.7%), extracted 372000 data points so far
+  Processed 32000/35760 tracks (89.5%), extracted 384000 data points so far
+  Processed 33000/35760 tracks (92.3%), extracted 396000 data points so far
+  Processed 34000/35760 tracks (95.1%), extracted 408000 data points so far
+  Processed 35000/35760 tracks (97.9%), extracted 420000 data points so far
+  Completed processing all 35760 tracks
+Added 429120 pre-convective data points
+Results saved to: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/ICON/hur/mcs_env_hur_20200102_20210101_hur_850hPa.parquet
+
+============================================================
+SUMMARY STATISTICS - hur - Date range 1/1
+============================================================
+Total tracks processed: 35760
+Total data points: 771810
+Radii processed: [5.  3.5 2. ]
+Variable: hur
+Time range: -24.0h to 306.0h
+
+Extraction completed in 647.28 seconds (10.79 minutes)
+============================================================
+
+============================================================
+VARIABLE hur COMPLETED
+============================================================
+Processed 1 date range(s)
+Total time for hur: 674.38 seconds (11.24 minutes)
+============================================================
+
+============================================================
+ALL VARIABLES AND DATE RANGES COMPLETED
+============================================================
+Processed 1 variable(s)
+Processed 1 date range(s) per variable
+Total time: 704.58 seconds (11.74 minutes)
+Average per variable: 704.58 seconds
+============================================================
+Completed processing for all variables
+All processing complete at Fri 17 Oct 2025 08:44:54 PM PDT

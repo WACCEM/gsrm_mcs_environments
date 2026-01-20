@@ -2,7 +2,7 @@
 #SBATCH -N 1
 #SBATCH -C cpu
 #SBATCH -q regular
-#SBATCH -t 04:30:00
+#SBATCH -t 02:45:00
 #SBATCH -J extract_ifs_masks
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -14,7 +14,7 @@ conda activate /global/common/software/m1867/python/lp_env/easy
 # Set up paths and parameters
 ROOT_DIR="/pscratch/sd/w/wcmca1/hackathon/mcs/ifs_tco3999_rcbmf/"
 TRACK_FILE="${ROOT_DIR}/stats/mcs_tracks_final_20200101.0000_20210228.2330.nc"
-MASK_FILE="${ROOT_DIR}/mcstracking/ifs_hrly_mcsmask_hp8_v1.zarr"
+MASK_FILE="${ROOT_DIR}/mcstracking/ifs_hrly_mcsmask_hp7_v1.zarr"
 OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/IFS_all/from_masks"
 
 # Create output directory if it doesn't exist
@@ -24,8 +24,8 @@ mkdir -p $OUTPUT_DIR
 # Model and catalog settings
 CATALOG_URL="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"
 CURRENT_LOCATION="online" 
-CATALOG_MODEL="um_glm_n2560_RAL3p3" 
-CATALOG_PARAMS='{"zoom": 8}'  # For 3D  data, use: '{"zoom": 8, "time": "PT3H"}'
+CATALOG_MODEL="ifs_tco3999_rcbmf" 
+CATALOG_PARAMS='{"zoom": 7}'  # For 3D  data, use: '{"zoom": 8, "time": "PT3H"}'
 
 # Set spatial bounds
 MIN_LAT="-90"
@@ -47,7 +47,7 @@ CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 CONVERT_OMEGA_TO_WA=""  # Set to "--convert_omega_to_wa" to convert omega to wa
 
 # Set variables to extract
-VARIABLES=("hfssd" "sfcWind" "hflsd" "tas" "huss" "ps" )  # Add more as needed: "prw" "hflsd" "clt" "sfcWind" "hflsd" "tas" "huss" "hflsd"
+VARIABLES=("hfssd" "hflsd" "sfcWind" "tas" "ps")  #  "tas" "huss" "ps"Add more as needed: "prw" "hflsd" "clt" "sfcWind" "hflsd" "tas" "huss" "hflsd"
 
 
 # ===== EXAMPLE: Extract surface wind speed =====

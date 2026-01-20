@@ -13,16 +13,18 @@ conda activate /global/common/software/m1867/python/lp_env/easy
 
 # ===== PATHS AND FILES =====
 ROOT_DIR="/global/cfs/cdirs/m4581/gsharing/hackathon"
-# TRACK_FILE="${ROOT_DIR}/tracking/mcs/scream/stats/mcs_tracks_final_20190801.0000_20200901.0000.nc"
-# TRACK_FILE=/pscratch/sd/f/feng045/waccem/mcs_global/stats/mcs_tracks_final_extc_20200101.0000_20210101.0000.nc
-TRACK_FILE="/pscratch/sd/p/paccini/IFS_mcs_hackathon/ifs_tco3999_rcbmf/stats/mcs_tracks_final_20200101.0000_20210228.2330.nc" #IFS
-OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/for_ifs/"
+# TRACK_FILE="${ROOT_DIR}/tracking/mcs/scream/stats/mcs_tracks_final_20190801.0000_20200901.0000.nc" #SCREAM
+# TRACK_FILE="/pscratch/sd/w/wcmca1/hackathon/mcs/nicam_gl11/stats/mcs_tracks_final_20200301.0000_20210301.0000.nc" #NICAM
+# TRACK_FILE="/pscratch/sd/f/feng045/waccem/mcs_global/stats/mcs_tracks_final_extc_20200101.0000_20210101.0000.nc" #OBS
+TRACK_FILE="/global/cfs/cdirs/wcm_shr/hk25/mcs/IMERGv7/stats/mcs_tracks_final_20190801.0000_20200901.0000.nc" #IMERGv7
+# TRACK_FILE="/pscratch/sd/p/paccini/IFS_mcs_hackathon/ifs_tco3999_rcbmf/stats/mcs_tracks_final_20200101.0000_20210228.2330.nc" #IFS
+OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/for_era5_imergv7/"
 mkdir -p $OUTPUT_DIR
 
 # ===== MODEL AND CATALOG SETTINGS =====
 CATALOG_URL="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"
 CURRENT_LOCATION="NERSC"
-CATALOG_MODEL="scream_ne120"
+CATALOG_MODEL="scream_ne120" #""
 CATALOG_PARAMS='{"zoom": 8}'
 LAND_FRACTION_VAR="LANDFRAC"
 
@@ -31,14 +33,14 @@ RADII="5,3.5,2"
 LAT_VAR="meanlat"
 LON_VAR="meanlon"
 START_DATE="2020-01-01"
-END_DATE="2021-02-27"
+END_DATE="2021-03-01"
 OUTPUT_FORMAT="parquet"
 
 # ===== SPATIAL BOUNDS =====
-MIN_LAT="-30"
-MAX_LAT="30"
-MIN_LON="-177"
-MAX_LON="177"
+MIN_LAT="-90"
+MAX_LAT="90"
+MIN_LON="-180"
+MAX_LON="180"
 
 # ===== RUN SCRIPT V2 (optimized with batched approach - 1.5x faster!) =====
 echo "=========================================="

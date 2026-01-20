@@ -237,9 +237,19 @@ def clean_attrs_for_netcdf(ds):
 
 
 def process_month_data(ds_month_year, year_val, month, original_history, new_history, 
-                      out_dir, model_name, time_res, zoom):
+                      out_dir, model_name, time_res, zoom, 
+                      low_shear_ranges, deep_shear_ranges):
     """
     Process one month of data: compute wind shear and save to netCDF.
+    
+    Parameters:
+    -----------
+    low_shear_ranges : list of tuples
+        List of (lower_hPa, upper_hPa) tuples for low-level shear
+        e.g., [(975, 800), (1000, 800)]
+    deep_shear_ranges : list of tuples
+        List of (lower_hPa, upper_hPa) tuples for deep-layer shear
+        e.g., [(850, 400)]
     """
     print(f"\nProcessing {year_val}-{month:02d}...")
     sys.stdout.flush()
@@ -262,90 +272,118 @@ def process_month_data(ds_month_year, year_val, month, original_history, new_his
     
     pressure_coord = ds_month_year['pressure']
     
-    # Normalize pressure levels to dataset units
-    low_shear_levels_hPa = [1000, 400]   # Low-shear: 1000 hPa - 400 hPa
-    deep_shear_levels_hPa = [850, 100]   # Deep-shear: 850 hPa - 100 hPa
+    # Store all computed variables
+    output_vars = {}
     
-    low_shear_levels, units = normalize_pressure_levels(low_shear_levels_hPa, pressure_coord)
-    deep_shear_levels, _ = normalize_pressure_levels(deep_shear_levels_hPa, pressure_coord)
+    # ===== COMPUTE LOW SHEAR for all specified ranges =====
+    if low_shear_ranges:
+        print(f"  Computing low-shear for {len(low_shear_ranges)} range(s)...")
+        sys.stdout.flush()
+        
+        for lower_hPa, upper_hPa in low_shear_ranges:
+            print(f"    Range: {upper_hPa} hPa - {lower_hPa} hPa")
+            sys.stdout.flush()
+            
+            # Normalize pressure levels to dataset units
+            levels_dataset, units = normalize_pressure_levels([lower_hPa, upper_hPa], pressure_coord)
+            
+            try:
+                # Get wind components at both levels
+                ua_lower = ds_month_year['ua'].sel(pressure=levels_dataset[0], method='nearest')
+                va_lower = ds_month_year['va'].sel(pressure=levels_dataset[0], method='nearest')
+                ua_upper = ds_month_year['ua'].sel(pressure=levels_dataset[1], method='nearest')
+                va_upper = ds_month_year['va'].sel(pressure=levels_dataset[1], method='nearest')
+                
+                # Compute shear
+                shear_mag, shear_dir = compute_wind_shear(ua_upper, va_upper, ua_lower, va_lower)
+                
+                # Create variable names with pressure level information
+                var_suffix = f"_{lower_hPa}hPa-{upper_hPa}hPa"
+                mag_varname = f"low_shear_magnitude{var_suffix}"
+                dir_varname = f"low_shear_direction{var_suffix}"
+                
+                # Add attributes
+                shear_mag.attrs.update({
+                    'long_name': f'Low-Level Wind Shear Magnitude ({upper_hPa}-{lower_hPa} hPa)',
+                    'units': 'm s-1',
+                    'description': f'Magnitude of wind difference between {upper_hPa} hPa and {lower_hPa} hPa',
+                    'formula': f'sqrt((u{upper_hPa}-u{lower_hPa})^2 + (v{upper_hPa}-v{lower_hPa})^2)',
+                    'pressure_levels_hPa': f'{lower_hPa},{upper_hPa}'
+                })
+                
+                shear_dir.attrs.update({
+                    'long_name': f'Low-Level Wind Shear Direction ({upper_hPa}-{lower_hPa} hPa)',
+                    'units': 'degrees',
+                    'description': f'Direction of wind shear vector ({upper_hPa} hPa - {lower_hPa} hPa)',
+                    'convention': 'Meteorological (0° = North, clockwise)',
+                    'pressure_levels_hPa': f'{lower_hPa},{upper_hPa}'
+                })
+                
+                output_vars[mag_varname] = shear_mag
+                output_vars[dir_varname] = shear_dir
+                
+                print(f"      ✓ {mag_varname}, {dir_varname}")
+                
+            except Exception as e:
+                print(f"      ✗ ERROR: {e}")
+        
+        sys.stdout.flush()
     
-    # ===== COMPUTE LOW SHEAR (400 hPa - 1000 hPa) =====
-    print(f"  Computing low-shear (400 hPa - 1000 hPa)...")
-    sys.stdout.flush()
-    
-    try:
-        ua_1000 = ds_month_year['ua'].sel(pressure=low_shear_levels[0], method='nearest')
-        va_1000 = ds_month_year['va'].sel(pressure=low_shear_levels[0], method='nearest')
-        ua_400 = ds_month_year['ua'].sel(pressure=low_shear_levels[1], method='nearest')
-        va_400 = ds_month_year['va'].sel(pressure=low_shear_levels[1], method='nearest')
+    # ===== COMPUTE DEEP SHEAR for all specified ranges =====
+    if deep_shear_ranges:
+        print(f"  Computing deep-shear for {len(deep_shear_ranges)} range(s)...")
+        sys.stdout.flush()
         
-        low_shear_mag, low_shear_dir = compute_wind_shear(ua_400, va_400, ua_1000, va_1000)
+        for lower_hPa, upper_hPa in deep_shear_ranges:
+            print(f"    Range: {upper_hPa} hPa - {lower_hPa} hPa")
+            sys.stdout.flush()
+            
+            # Normalize pressure levels to dataset units
+            levels_dataset, units = normalize_pressure_levels([lower_hPa, upper_hPa], pressure_coord)
+            
+            try:
+                # Get wind components at both levels
+                ua_lower = ds_month_year['ua'].sel(pressure=levels_dataset[0], method='nearest')
+                va_lower = ds_month_year['va'].sel(pressure=levels_dataset[0], method='nearest')
+                ua_upper = ds_month_year['ua'].sel(pressure=levels_dataset[1], method='nearest')
+                va_upper = ds_month_year['va'].sel(pressure=levels_dataset[1], method='nearest')
+                
+                # Compute shear
+                shear_mag, shear_dir = compute_wind_shear(ua_upper, va_upper, ua_lower, va_lower)
+                
+                # Create variable names with pressure level information
+                var_suffix = f"_{lower_hPa}hPa-{upper_hPa}hPa"
+                mag_varname = f"deep_shear_magnitude{var_suffix}"
+                dir_varname = f"deep_shear_direction{var_suffix}"
+                
+                # Add attributes
+                shear_mag.attrs.update({
+                    'long_name': f'Deep-Layer Wind Shear Magnitude ({upper_hPa}-{lower_hPa} hPa)',
+                    'units': 'm s-1',
+                    'description': f'Magnitude of wind difference between {upper_hPa} hPa and {lower_hPa} hPa',
+                    'formula': f'sqrt((u{upper_hPa}-u{lower_hPa})^2 + (v{upper_hPa}-v{lower_hPa})^2)',
+                    'pressure_levels_hPa': f'{lower_hPa},{upper_hPa}'
+                })
+                
+                shear_dir.attrs.update({
+                    'long_name': f'Deep-Layer Wind Shear Direction ({upper_hPa}-{lower_hPa} hPa)',
+                    'units': 'degrees',
+                    'description': f'Direction of wind shear vector ({upper_hPa} hPa - {lower_hPa} hPa)',
+                    'convention': 'Meteorological (0° = North, clockwise)',
+                    'pressure_levels_hPa': f'{lower_hPa},{upper_hPa}'
+                })
+                
+                output_vars[mag_varname] = shear_mag
+                output_vars[dir_varname] = shear_dir
+                
+                print(f"      ✓ {mag_varname}, {dir_varname}")
+                
+            except Exception as e:
+                print(f"      ✗ ERROR: {e}")
         
-        low_shear_mag.attrs.update({
-            'long_name': 'Low-Level Wind Shear Magnitude (400-1000 hPa)',
-            'units': 'm s-1',
-            'description': 'Magnitude of wind difference between 400 hPa and 1000 hPa',
-            'formula': 'sqrt((u400-u1000)^2 + (v400-v1000)^2)'
-        })
-        
-        low_shear_dir.attrs.update({
-            'long_name': 'Low-Level Wind Shear Direction (400-1000 hPa)',
-            'units': 'degrees',
-            'description': 'Direction of wind shear vector (400 hPa - 1000 hPa)',
-            'convention': 'Meteorological (0° = North, clockwise)'
-        })
-        
-        print(f"    Low-shear computed successfully")
-    except Exception as e:
-        print(f"    ERROR computing low-shear: {e}")
-        low_shear_mag = None
-        low_shear_dir = None
-    
-    sys.stdout.flush()
-    
-    # ===== COMPUTE DEEP SHEAR (850 hPa - 100 hPa) =====
-    print(f"  Computing deep-shear (850 hPa - 100 hPa)...")
-    sys.stdout.flush()
-    
-    try:
-        ua_850 = ds_month_year['ua'].sel(pressure=deep_shear_levels[0], method='nearest')
-        va_850 = ds_month_year['va'].sel(pressure=deep_shear_levels[0], method='nearest')
-        ua_100 = ds_month_year['ua'].sel(pressure=deep_shear_levels[1], method='nearest')
-        va_100 = ds_month_year['va'].sel(pressure=deep_shear_levels[1], method='nearest')
-        
-        deep_shear_mag, deep_shear_dir = compute_wind_shear(ua_100, va_100, ua_850, va_850)
-        
-        deep_shear_mag.attrs.update({
-            'long_name': 'Deep-Level Wind Shear Magnitude (850-100 hPa)',
-            'units': 'm s-1',
-            'description': 'Magnitude of wind difference between 100 hPa and 850 hPa',
-            'formula': 'sqrt((u100-u850)^2 + (v100-v850)^2)'
-        })
-        
-        deep_shear_dir.attrs.update({
-            'long_name': 'Deep-Level Wind Shear Direction (850-100 hPa)',
-            'units': 'degrees',
-            'description': 'Direction of wind shear vector (100 hPa - 850 hPa)',
-            'convention': 'Meteorological (0° = North, clockwise)'
-        })
-        
-        print(f"    Deep-shear computed successfully")
-    except Exception as e:
-        print(f"    ERROR computing deep-shear: {e}")
-        deep_shear_mag = None
-        deep_shear_dir = None
-    
-    sys.stdout.flush()
+        sys.stdout.flush()
     
     # ===== SAVE TO NETCDF =====
-    output_vars = {}
-    if low_shear_mag is not None:
-        output_vars['low_shear_magnitude'] = low_shear_mag
-        output_vars['low_shear_direction'] = low_shear_dir
-    if deep_shear_mag is not None:
-        output_vars['deep_shear_magnitude'] = deep_shear_mag
-        output_vars['deep_shear_direction'] = deep_shear_dir
-    
     if not output_vars:
         print("  No shear variables computed, skipping file output")
         sys.stdout.flush()
@@ -429,7 +467,50 @@ def main():
     parser.add_argument('--start_date', help='Start date (YYYY-MM-DD)')
     parser.add_argument('--end_date', help='End date (YYYY-MM-DD)')
     
+    # Pressure level options
+    parser.add_argument('--low_shear_levels', default='975,800',
+                        help='Pressure levels for low-level shear (format: "lower,upper" or multiple ranges separated by semicolons). '
+                             'Default: "975,800" (975-800 hPa). '
+                             'Example for multiple ranges: "1000,800;975,800"')
+    parser.add_argument('--deep_shear_levels', default='850,400',
+                        help='Pressure levels for deep-layer shear (format: "lower,upper" or multiple ranges separated by semicolons). '
+                             'Default: "850,400" (850-400 hPa). '
+                             'Example for multiple ranges: "850,400;850,200"')
+    
     args = parser.parse_args()
+    
+    # Parse pressure level ranges
+    def parse_pressure_ranges(range_string):
+        """
+        Parse pressure level ranges from string.
+        
+        Format: "lower,upper" or "lower1,upper1;lower2,upper2;..."
+        Returns: list of (lower, upper) tuples
+        
+        Example:
+            "975,800" -> [(975, 800)]
+            "1000,800;975,800" -> [(1000, 800), (975, 800)]
+        """
+        if not range_string:
+            return []
+        
+        ranges = []
+        for range_spec in range_string.split(';'):
+            parts = range_spec.strip().split(',')
+            if len(parts) == 2:
+                try:
+                    lower = int(parts[0].strip())
+                    upper = int(parts[1].strip())
+                    ranges.append((lower, upper))
+                except ValueError:
+                    print(f"WARNING: Invalid pressure range '{range_spec}', skipping")
+            else:
+                print(f"WARNING: Invalid pressure range format '{range_spec}', expected 'lower,upper'")
+        
+        return ranges
+    
+    low_shear_ranges = parse_pressure_ranges(args.low_shear_levels)
+    deep_shear_ranges = parse_pressure_ranges(args.deep_shear_levels)
     
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
@@ -444,6 +525,11 @@ def main():
     print(f"Output directory: {args.output_dir}")
     if args.start_date and args.end_date:
         print(f"Date range: {args.start_date} to {args.end_date}")
+    print(f"\nPressure level ranges:")
+    if low_shear_ranges:
+        print(f"  Low-level shear:  {low_shear_ranges}")
+    if deep_shear_ranges:
+        print(f"  Deep-layer shear: {deep_shear_ranges}")
     print("=" * 70)
     sys.stdout.flush()
     
@@ -558,7 +644,8 @@ def main():
                 ds_month_year, year_val, month, 
                 original_history, new_history,
                 args.output_dir, model_name, 
-                args.model_time_freq, zoom_level
+                args.model_time_freq, zoom_level,
+                low_shear_ranges, deep_shear_ranges
             )
     
     print("\n" + "=" * 70)

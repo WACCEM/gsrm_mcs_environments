@@ -2,7 +2,7 @@
 #SBATCH -N 1
 #SBATCH -C cpu
 #SBATCH -q regular
-#SBATCH -t 01:00:00
+#SBATCH -t 02:00:00
 #SBATCH -J extract_um_masks
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -15,7 +15,7 @@ conda activate /global/common/software/m1867/python/lp_env/easy
 ROOT_DIR="/pscratch/sd/w/wcmca1/hackathon/mcs/um_glm_n2560_RAL3p3/"
 TRACK_FILE="${ROOT_DIR}/stats/mcs_tracks_final_20200201.0000_20210301.0000.nc"
 MASK_FILE="${ROOT_DIR}/mcstracking/um_hrly_mcsmask_hp8_v1.zarr"
-OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/UM_all/from_masks"
+OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/UM_all/from_masks_v3"
 
 # Create output directory if it doesn't exist
 mkdir -p $OUTPUT_DIR
@@ -47,7 +47,7 @@ CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 CONVERT_OMEGA_TO_WA=""  # Set to "--convert_omega_to_wa" to convert omega to wa
 
 # Set variables to extract
-VARIABLES=( "sfcWind" "hfssd" "tas" "huss")  # Add more as needed: "prw" "hflsd" "clt" "sfcWind" "hflsd" "tas" "huss" "ps" "hflsd"
+VARIABLES=( "sfcWind" "hfssd" "tas" "hfsld" "ps")  # Add more as needed: "prw" "hflsd" "clt" "sfcWind" "hflsd" "tas" "huss" "ps" "hflsd"
 
 # ===== EXAMPLE: Extract surface wind speed =====
 # VARIABLES=("sfcWind")  # Will be computed from uas and vas
@@ -89,8 +89,7 @@ echo "================================================"
 echo "Processing all variables: ${VARIABLES[@]}"
 echo "================================================"
 
-srun -n 1 -c 32 --cpu_bind=cores python get_env_vars_from_masks.py \
-  --catalog_url "$CATALOG_URL" \
+srun -n 1 -c 32 --cpu_bind=cores python get_env_vars_from_masks_last.py --catalog_url "$CATALOG_URL" \
   --current_location "$CURRENT_LOCATION" \
   --catalog_model "$CATALOG_MODEL" \
   --catalog_params "$CATALOG_PARAMS" \

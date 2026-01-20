@@ -1,0 +1,113 @@
+WARNING: Land fraction file not found: 
+Will process all tracks without land fraction filtering.
+Starting environmental variable extraction...
+Processing 1 variable(s) across 1 date range(s)
+================================================
+Processing all variables: deep_shear_magnitude
+================================================
+Using pre-computed data from: /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON
+Using filename pattern: icon_d3hp003_wind_shear_hp8_6H
+Processing 1 date ranges
+============================================================
+Environmental Variable Extraction
+============================================================
+Model: icon_d3hp003
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/ICON_all
+Variables: deep_shear_magnitude
+Number of date ranges: 1
+============================================================
+Using radii: [5.  3.5 2. ]
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset icon_d3hp003...
+Computing HEALPix grid...
+Grid: nside=256
+Loading MCS track data from /global/cfs/cdirs/m4581/gsharing/hackathon/tracking/mcs/icon_d3hp003/stats/mcs_tracks_final_20200102.0000_20201231.2330.nc
+Loaded 28325050 total track-time points
+After dropping NaN positions: 818949 valid track time points
+After spatial filtering: 801717 track time points
+This dataset will be reused for all 1 variable(s) and 1 date range(s)
+Calculating HEALPix indices...
+
+============================================================
+Processing variable 1/1: deep_shear_magnitude
+============================================================
+Loading pre-computed variable from /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON
+
+============================================================
+Processing date range 1/1
+Date range: 2020-01-02 to 2021-01-01
+============================================================
+Loading pre-computed variable 'deep_shear_magnitude' from /pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON
+Loading 12 pre-computed file(s)...
+Loaded pre-computed variable: deep_shear_magnitude, shape: (1460, 786432)
+Pre-computed variable data ready
+Filtered to 801717 track time points for this date range
+Subsampling tracks to model frequency: 6H
+Subsampled from 801717 to 151675 time points (81.1% reduction)
+
+Aligning track times to dataset times...
+Aligning track times to dataset times...
+  Dataset has 425 time steps
+  Original unique times: 8760
+  Aligned unique times: 366
+  Reduction: 95.8%
+Calculating circular areas for 151675 track positions...
+  Progress: 0/151675 positions processed...
+  Progress: 50000/151675 positions processed...
+  Progress: 100000/151675 positions processed...
+  Progress: 150000/151675 positions processed...
+Calculated circular areas for 455025 track-time-radius combinations
+Extracting pre-convective areas (first time step per track)...
+Extracted pre-convective areas for 43577 tracks
+Creating track time mapping...
+Extracting deep_shear_magnitude statistics for track duration...
+Loading deep_shear_magnitude data for 697523 pixels and 366 time steps...
+Time mapping created: 366 requested → 366 actual times
+Processing 455025 areas with batched approach (batch_size=500)...
+  Progress: 100000/455025 areas processed...
+  Progress: 200000/455025 areas processed...
+  Progress: 300000/455025 areas processed...
+  Progress: 400000/455025 areas processed...
+Extracted deep_shear_magnitude statistics for 455025 combinations
+Adding pre-convective data (24 hours before initiation)...
+Collecting all pre-convective times and pixels for 43577 tracks...
+Loading pre-convective data: 683703 pixels × 1464 times...
+Pre-convective data loaded successfully
+Extracting pre-convective statistics for 43577 tracks...
+  Processed 10000/43577 tracks, extracted 120000 data points.
+  Processed 20000/43577 tracks, extracted 240000 data points.
+  Processed 30000/43577 tracks, extracted 360000 data points.
+  Processed 40000/43577 tracks, extracted 480000 data points.
+  Completed processing all 43577 tracks
+Added 522924 pre-convective data points
+Results saved to: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/ICON_all/deep_shear_magnitude/mcs_env_deep_shear_magnitude_20200102_20210101_deep_shear_magnitude.parquet
+
+============================================================
+SUMMARY STATISTICS - deep_shear_magnitude - Date range 1/1
+============================================================
+Total tracks processed: 43577
+Total data points: 977949
+Radii processed: [5.  3.5 2. ]
+Variable: deep_shear_magnitude
+Time range: -24.0h to 312.0h
+
+Extraction completed in 738.53 seconds (12.31 minutes)
+============================================================
+
+============================================================
+VARIABLE deep_shear_magnitude COMPLETED
+============================================================
+Processed 1 date range(s)
+Total time for deep_shear_magnitude: 738.53 seconds (12.31 minutes)
+============================================================
+
+============================================================
+ALL VARIABLES AND DATE RANGES COMPLETED
+============================================================
+Processed 1 variable(s)
+Processed 1 date range(s) per variable
+Total time: 769.85 seconds (12.83 minutes)
+Average per variable: 769.85 seconds
+============================================================
+Completed processing for all variables
+All processing complete at Tue 28 Oct 2025 04:12:30 PM PDT

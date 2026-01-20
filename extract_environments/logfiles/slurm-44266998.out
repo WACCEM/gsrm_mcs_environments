@@ -1,0 +1,63 @@
+==========================================
+Land Fraction Extraction v2 (Batched)
+==========================================
+Model: icon_d3hp003
+Catalog params: {"zoom": 8}
+Date range: 2020-01-01 to 2021-03-01
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/
+==========================================
+============================================================
+Land Fraction Extraction for MCS Tracks (v2 - optimized)
+============================================================
+Model: icon_d3hp003
+Catalog params: {"zoom": 8}
+Date range: 2020-01-01 to 2021-03-01
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/
+============================================================
+Using radii: [5.  3.5 2. ]
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset icon_d3hp003...
+Computing HEALPix grid...
+Grid: nside=256
+Setting up land fraction data (sftlf)...
+After dropping NaN positions: 818949 valid track time points
+Subsampling tracks to model frequency: 6H
+Subsampled from 801717 to 151675 time points (81.1% reduction)
+Filtered to 151675 track time points
+Calculating HEALPix indices...
+Calculating circular areas for 151675 track positions...
+  Progress: 0/151675 positions processed...
+  Progress: 50000/151675 positions processed...
+  Progress: 100000/151675 positions processed...
+  Progress: 150000/151675 positions processed...
+Calculated circular areas for 455025 track-time-radius combinations
+Loading land fraction data for 697523 unique pixels...
+Successfully loaded land fraction data.
+Processing 455025 areas with batched approach (batch_size=500)...
+  Progress: 100000/455025 areas processed...
+  Progress: 200000/455025 areas processed...
+  Progress: 300000/455025 areas processed...
+  Progress: 400000/455025 areas processed...
+Extracted land fractions for 455025 track-time-radius combinations
+Merging track metadata with land fraction results...
+Calculating track summary statistics...
+Created summary statistics for 130731 track-radius combinations
+Saved detailed land fraction data to /pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/mcs_land_fractions_icon_d3hp003_zoom8_detailed.parquet
+Saved summary land fraction data to /pscratch/sd/p/paccini/temp/hackathon/updated_land_fractions/mcs_land_fractions_icon_d3hp003_zoom8_summary.parquet
+
+============================================================
+SUMMARY STATISTICS
+============================================================
+Total tracks processed: 43577
+Total track-time points: 455025
+Radii processed: [5.  3.5 2. ]
+  Radius 5.0°: 43577 tracks, mean land fraction = 0.354
+  Radius 3.5°: 43577 tracks, mean land fraction = 0.360
+  Radius 2.0°: 43577 tracks, mean land fraction = 0.365
+
+Extraction completed in 227.82 seconds (3.80 minutes)
+============================================================
+
+==========================================
+Extraction completed at Tue 21 Oct 2025 05:45:01 PM PDT
+==========================================

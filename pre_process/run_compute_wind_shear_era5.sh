@@ -27,11 +27,20 @@ CATALOG_MODEL="era5"
 MODEL_TIME_FREQ="3H"  # Model output frequency
 
 # Output directory
-OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/wind_shear/ERA5"
+OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/ERA5"
 
 # Date range (optional - leave empty to process all available data)
 START_DATE="2019-08-01"
-END_DATE="2021-03-01" #"2021-03-01"  "
+END_DATE="2021-01-01" #"2021-03-01"  "
+
+# Pressure levels for wind shear computation (in hPa)
+# Format: "lower,upper" where shear = upper - lower
+# Multiple ranges can be specified separated by semicolons
+# Examples:
+#   Single range: "975,800"
+#   Multiple ranges: "1000,800;975,800"
+LOW_SHEAR_LEVELS="1000,800; 975,800; 950,800"    # Default: 975-800 hPa (low-level shear)
+DEEP_SHEAR_LEVELS="850,400; 800,400"   # Default: 850-400 hPa (deep-layer shear)
 
 
 # ===== END PARAMETERS =====
@@ -62,7 +71,9 @@ if [ -n "$ZARR_PATH" ]; then
       --zarr_path \"$ZARR_PATH\" \
       --zarr_model_name \"$ZARR_MODEL_NAME\" \
       --model_time_freq \"$MODEL_TIME_FREQ\" \
-      --output_dir \"$OUTPUT_DIR\""
+      --output_dir \"$OUTPUT_DIR\"\
+      --low_shear_levels \"$LOW_SHEAR_LEVELS\" \
+      --deep_shear_levels \"$DEEP_SHEAR_LEVELS\""
 else
     # Use catalog
     CMD="srun -n 1 -c 32 --cpu_bind=cores python compute_wind_shear.py \
@@ -71,7 +82,9 @@ else
       --catalog_model \"$CATALOG_MODEL\" \
       --model_time_freq \"$MODEL_TIME_FREQ\" \
       --catalog_params '$CATALOG_PARAMS' \
-      --output_dir \"$OUTPUT_DIR\""
+      --output_dir \"$OUTPUT_DIR\"\
+      --low_shear_levels \"$LOW_SHEAR_LEVELS\" \
+      --deep_shear_levels \"$DEEP_SHEAR_LEVELS\""
 fi
 
 # Add date range if specified

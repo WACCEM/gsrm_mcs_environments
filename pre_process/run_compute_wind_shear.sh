@@ -16,17 +16,25 @@ conda activate /global/common/software/m1867/python/lp_env/easy
 # Model and catalog settings
 CATALOG_URL="https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml"
 CURRENT_LOCATION="NERSC"  #  "NERSC" for SCREAM, ICON, NICAM; "online" for UM and IFS
-CATALOG_MODEL="icon_d3hp003" # NICAM: "nicam_gl11"; SCREAM: "scream_ne120"; UM: "um_glm_n2560_RAL3p3"; ICON: "icon_d3hp003"
-CATALOG_PARAMS='{"zoom": 8, "time": "PT6H", "time_method": "inst"}' # NICAM: '{"zoom": 8, "time":"PT6H"}'; SCREAM: '{"zoom": 8}'; UM: '{"zoom": 8, "time": "PT3H"}'; ICON: '{"zoom": 8, "time":"PT6H", "time_method":"inst"}'
+CATALOG_MODEL="nicam_gl11" # NICAM: "nicam_gl11"; SCREAM: "scream_ne120"; UM: "um_glm_n2560_RAL3p3"; ICON: "icon_d3hp003"
+CATALOG_PARAMS='{"zoom": 8, "time": "PT6H"}' # NICAM: '{"zoom": 8, "time":"PT6H"}'; SCREAM: '{"zoom": 8}'; UM: '{"zoom": 8, "time": "PT3H"}'; ICON: '{"zoom": 8, "time":"PT6H", "time_method":"inst"}'
 MODEL_TIME_FREQ="6H"  # Model output frequency (1H, 3H, 6H, etc.)
 
 
 # Output directory
-OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/wind_shear/ICON" #/NICAM #/SCREAM #/UM
-
+OUTPUT_DIR="/pscratch/sd/p/paccini/temp/hackathon/new_wind_shear/NICAM" #/NICAM #/SCREAM #/UM
 # Date range (optional - leave empty to process all available data)
-START_DATE="" #2020-03-01
-END_DATE="" #2021-03-01
+START_DATE="2020-12-01" #2020-03-01
+END_DATE="2021-03-01" #2021-03-01
+
+# Pressure levels for wind shear computation (in hPa)
+# Format: "lower,upper" where shear = upper - lower
+# Multiple ranges can be specified separated by semicolons
+# Examples:
+#   Single range: "975,800"
+#   Multiple ranges: "1000,800;975,800"
+LOW_SHEAR_LEVELS="1000,800; 975,800; 950,800"    # Default: 975-800 hPa (low-level shear)
+DEEP_SHEAR_LEVELS="850,400; 800,400"   # Default: 850-400 hPa (deep-layer shear)
 
 # ===== END PARAMETERS =====
 
@@ -51,7 +59,9 @@ CMD="srun -n 1 -c 32 --cpu_bind=cores python compute_wind_shear.py \
   --catalog_model \"$CATALOG_MODEL\" \
   --model_time_freq \"$MODEL_TIME_FREQ\" \
   --catalog_params '$CATALOG_PARAMS' \
-  --output_dir \"$OUTPUT_DIR\""
+  --output_dir \"$OUTPUT_DIR\" \
+  --low_shear_levels \"$LOW_SHEAR_LEVELS\" \
+  --deep_shear_levels \"$DEEP_SHEAR_LEVELS\""
 
 # Add date range if specified
 if [ -n "$START_DATE" ] && [ -n "$END_DATE" ]; then

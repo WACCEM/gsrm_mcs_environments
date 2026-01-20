@@ -1,0 +1,103 @@
+================================================================================
+CHECKING PRE-COMPUTED WIND SHEAR DATA FOR ALL MODELS
+================================================================================
+
+================================================================================
+CHECKING IFS
+================================================================================
+
+Loading 15 pre-computed files...
+Loaded dataset:
+  Time range: 2020-01-01T00:00:00.000000000 to 2021-03-01T00:00:00.000000000
+  Number of time steps: 3401
+  Variables: ['low_shear_magnitude', 'low_shear_direction', 'deep_shear_magnitude', 'deep_shear_direction']
+  Shape: (3401, 196608)
+
+Variable: deep_shear_magnitude
+  Shape: (3401, 196608)
+  Total values: 668,663,808
+
+Loading data into memory...
+Counting NaN values...
+
+NaN Statistics:
+  Total values:     668,663,808
+  NaN values:       47,185,920
+  Valid values:     621,477,888
+  NaN percentage:   7.0567%
+
+Checking all 3401 time steps...
+  Processed 500/3401 time steps...
+  Processed 1000/3401 time steps...
+  Processed 1500/3401 time steps...
+  Processed 2000/3401 time steps...
+  Processed 2500/3401 time steps...
+  Processed 3000/3401 time steps...
+
+Results:
+  Time steps with ANY NaNs:      240
+  Time steps with ALL NaNs:      240
+  Time steps with NO NaNs:       3161
+
+⚠️  WARNING: 240 time steps with ALL NaN values found!
+  First 10 all-NaN time steps:
+    2020-04-01T00:00:00.000000000
+    2020-04-01T03:00:00.000000000
+    2020-04-01T06:00:00.000000000
+    2020-04-01T09:00:00.000000000
+    2020-04-01T12:00:00.000000000
+    2020-04-01T15:00:00.000000000
+    2020-04-01T18:00:00.000000000
+    2020-04-01T21:00:00.000000000
+    2020-04-02T00:00:00.000000000
+    2020-04-02T03:00:00.000000000
+    ... and 230 more
+
+  Dates with all-NaN time steps: 30
+  First 10 dates: [datetime.date(2020, 4, 1), datetime.date(2020, 4, 2), datetime.date(2020, 4, 3), datetime.date(2020, 4, 4), datetime.date(2020, 4, 5), datetime.date(2020, 4, 6), datetime.date(2020, 4, 7), datetime.date(2020, 4, 8), datetime.date(2020, 4, 9), datetime.date(2020, 4, 10)]
+
+Spatial NaN Statistics:
+  Total cells:                   196,608
+  Cells with ANY NaNs:           196,608 (100.00%)
+  Cells with ALL NaNs:           0 (0.00%)
+  Cells with NO NaNs:            0 (0.00%)
+
+================================================================================
+CHECKING SCREAM
+================================================================================
+
+Loading 15 pre-computed files...
+
+❌ ERROR loading SCREAM: [Errno 2] No such file or directory: '/pscratch/sd/p/paccini/temp/hackathon/wind_shear/SCREAM/scream_ne120_wind_shear_hp8_3H.202010.nc'
+
+================================================================================
+CHECKING NICAM
+================================================================================
+
+Loading 15 pre-computed files...
+
+❌ ERROR loading NICAM: [Errno 2] No such file or directory: '/pscratch/sd/p/paccini/temp/hackathon/wind_shear/NICAM/nicam_3p5km_wind_shear_hp7_3H.202001.nc'
+
+================================================================================
+SUMMARY COMPARISON
+================================================================================
+
+Model           Total Times     All-NaN Times   NaN %           Status
+--------------------------------------------------------------------------------
+IFS             3401            240             7.0567          ⚠️
+SCREAM          ERROR           -               -               ❌
+NICAM           ERROR           -               -               ❌
+
+================================================================================
+IMPLICATIONS FOR TRACK EXTRACTION
+================================================================================
+
+Models with all-NaN time steps will process fewer tracks because:
+  - Tracks occurring during NaN periods cannot extract valid data
+  - These tracks are dropped from the final statistics
+  - The difference in track counts = tracks in NaN periods
+
+Recommendation:
+  - Regenerate pre-computed data to fill missing time steps
+  - Or use direct catalog loading (slower but complete data)
+================================================================================

@@ -1,0 +1,76 @@
+WARNING: Land fraction file not found: 
+Will process all tracks without land fraction filtering.
+Starting environmental variable extraction...
+Processing 1 variable(s) across 1 date range(s)
+================================================
+Processing all variables: wa
+================================================
+Processing 1 date ranges
+============================================================
+Environmental Variable Extraction
+============================================================
+Model: ifs_tco3999_rcbmf
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/IFS_all
+Variables: wa
+Number of date ranges: 1
+============================================================
+Using radii: [5.  3.5 2. ]
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset ifs_tco3999_rcbmf...
+Resampling IFS data from hourly to 6H...
+After resampling: 1701 time steps
+Dataset loaded successfully
+Detected IFS model: Applying dimension and variable name fixes...
+Swapped 'value' → 'cell' dimension
+Renamed 'level' → 'pressure' dimension
+Renamed variables: {'t': 'ta', 'w': 'wa', 'q': 'hus', 'r': 'hur', '2t': 'tas'}
+IFS model fixes complete
+Computing HEALPix grid...
+Grid: nside=128
+Loading MCS track data from /pscratch/sd/p/paccini/IFS_mcs_hackathon/ifs_tco3999_rcbmf/stats/mcs_tracks_final_20200101.0000_20210228.2330.nc
+Loaded 21012550 total track-time points
+After dropping NaN positions: 709549 valid track time points
+After spatial filtering: 698492 track time points
+This dataset will be reused for all 1 variable(s) and 1 date range(s)
+Calculating HEALPix indices...
+Using pressure levels: [500.0] hPa
+
+============================================================
+Processing variable 1/1: wa
+============================================================
+Converting vertical velocity (wa) to pressure velocity (omega)...
+Converting vertical velocity (wa) to pressure velocity (omega)...
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [500.0] hPa (no conversion needed)
+Omega conversion complete. Pressure levels: [500.0] hPa
+Variable data ready (omega)
+
+============================================================
+Processing date range 1/1
+Date range: 2020-01-01 to 2021-03-01
+============================================================
+Filtered to 698492 track time points for this date range
+Subsampling tracks to model frequency: 6H
+Subsampled from 698492 to 129624 time points (81.4% reduction)
+
+Aligning track times to dataset times...
+Aligning track times to dataset times...
+  Dataset has 1701 time steps
+  Original unique times: 10199
+  Aligned unique times: 1701
+  Reduction: 83.3%
+Calculating circular areas for 129624 track positions...
+  Progress: 0/129624 positions processed...
+  Progress: 50000/129624 positions processed...
+  Progress: 100000/129624 positions processed...
+Calculated circular areas for 388872 track-time-radius combinations
+Extracting pre-convective areas (first time step per track)...
+Extracted pre-convective areas for 32327 tracks
+Creating track time mapping...
+Extracting omega statistics for track duration...
+Loading omega data for 172474 pixels and 1701 time steps...
+Using time batching: 2 batches of up to 1000 time steps
+  Loading time batch 1/2: 1000 times...
+slurmstepd: error: *** STEP 44371254.0 ON nid006254 CANCELLED AT 2025-10-24T19:46:12 ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** JOB 44371254 ON nid006254 CANCELLED AT 2025-10-24T19:46:12 ***

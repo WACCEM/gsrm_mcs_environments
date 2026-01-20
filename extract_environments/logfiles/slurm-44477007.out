@@ -1,0 +1,125 @@
+WARNING: Land fraction file not found: 
+Will process all tracks without land fraction filtering.
+Starting environmental variable extraction...
+Processing 1 variable(s) across 1 date range(s)
+================================================
+Processing all variables: hus
+================================================
+Processing 1 date ranges
+============================================================
+Environmental Variable Extraction
+============================================================
+Model: nicam_gl11
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/NICAM_all
+Variables: hus
+Number of date ranges: 1
+============================================================
+Using radii: [5.  3.5 2. ]
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset nicam_gl11...
+Dataset loaded successfully
+Detected NICAM model: Renaming 'lev' → 'pressure' dimension...
+NICAM model fix complete
+Computing HEALPix grid...
+Grid: nside=256
+Loading MCS track data from /pscratch/sd/w/wcmca1/hackathon/mcs/nicam_gl11/stats/mcs_tracks_final_20200301.0000_20210301.0000.nc
+Loaded 28791750 total track-time points
+After dropping NaN positions: 848439 valid track time points
+After spatial filtering: 835403 track time points
+This dataset will be reused for all 1 variable(s) and 1 date range(s)
+Calculating HEALPix indices...
+Using pressure levels: [850.0] hPa
+
+============================================================
+Processing variable 1/1: hus
+============================================================
+Setting up variable data (hus)...
+3D variable detected with pressure dimension
+Requested pressure levels: [850.0] hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850.0] hPa (no conversion needed)
+Selected single pressure level: 850.0 hPa
+Variable is now 2D (cell, time) - ready for efficient loading
+Variable data ready
+
+============================================================
+Processing date range 1/1
+Date range: 2020-03-01 to 2021-03-01
+============================================================
+Filtered to 835403 track time points for this date range
+Subsampling tracks to model frequency: 6H
+Subsampled from 835403 to 157402 time points (81.2% reduction)
+
+Aligning track times to dataset times...
+Aligning track times to dataset times...
+  Dataset has 1460 time steps
+  Original unique times: 8759
+  Aligned unique times: 1460
+  Reduction: 83.3%
+Calculating circular areas for 157402 track positions...
+  Progress: 0/157402 positions processed...
+  Progress: 50000/157402 positions processed...
+  Progress: 100000/157402 positions processed...
+  Progress: 150000/157402 positions processed...
+Calculated circular areas for 472206 track-time-radius combinations
+Extracting pre-convective areas (first time step per track)...
+Extracted pre-convective areas for 44295 tracks
+Creating track time mapping...
+Extracting hus statistics for track duration...
+Loading hus data for 701994 pixels and 1460 time steps...
+Using time batching: 2 batches of up to 1000 time steps
+  Loading time batch 1/2: 1000 times...
+  Loading time batch 2/2: 460 times...
+Successfully loaded data for 1460 time steps
+Time mapping created: 1460 requested → 1460 actual times
+Processing 472206 areas with batched approach (batch_size=500)...
+  Progress: 100000/472206 areas processed...
+  Progress: 200000/472206 areas processed...
+  Progress: 300000/472206 areas processed...
+  Progress: 400000/472206 areas processed...
+Extracted hus statistics for 471230 combinations
+Adding pre-convective data (24 hours before initiation)...
+Collecting all pre-convective times and pixels for 44295 tracks...
+Loading pre-convective data: 670053 pixels × 1462 times...
+Using time batching: 2 batches of up to 1000 time steps
+  Loading pre-convective time batch 1/2: 1000 times...
+  Loading pre-convective time batch 2/2: 462 times...
+Pre-convective data loaded successfully: 1458 time steps
+Extracting pre-convective statistics for 44295 tracks...
+  Processed 10000/44295 tracks, extracted 119928 data points.
+  Processed 20000/44295 tracks, extracted 239430 data points.
+  Processed 30000/44295 tracks, extracted 358935 data points.
+  Processed 40000/44295 tracks, extracted 478908 data points.
+  Completed processing all 44295 tracks
+Added 530420 pre-convective data points
+Results saved to: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/NICAM_all/hus/mcs_env_hus_20200301_20210301_hus_850hPa.parquet
+
+============================================================
+SUMMARY STATISTICS - hus - Date range 1/1
+============================================================
+Total tracks processed: 44290
+Total data points: 1001650
+Radii processed: [5.  3.5 2. ]
+Variable: hus
+Time range: -24.0h to 384.0h
+
+Extraction completed in 717.86 seconds (11.96 minutes)
+============================================================
+
+============================================================
+VARIABLE hus COMPLETED
+============================================================
+Processed 1 date range(s)
+Total time for hus: 717.86 seconds (11.96 minutes)
+============================================================
+
+============================================================
+ALL VARIABLES AND DATE RANGES COMPLETED
+============================================================
+Processed 1 variable(s)
+Processed 1 date range(s) per variable
+Total time: 729.42 seconds (12.16 minutes)
+Average per variable: 729.42 seconds
+============================================================
+Completed processing for all variables
+All processing complete at Mon 27 Oct 2025 12:09:04 PM PDT

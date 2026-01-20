@@ -341,9 +341,14 @@ def load_precomputed_variable(precomputed_dir, variable_name, model_name, zoom_l
 
     # Open all files as a single dataset
     ds_combined = xr.open_mfdataset(files_to_load, combine='by_coords')
-    ds_combined = ds_combined.pipe(egh.attach_coords, signed_lon=True)
-    ds_combined = ds_combined.assign_coords(time=convert_time(ds_combined.time.values))
+    # ds_combined = ds_combined.pipe(egh.attach_coords, signed_lon=True)
+    # ds_combined = ds_combined.assign_coords(time=convert_time(ds_combined.time.values))
 
+    # Rename 'ncell' dimension to 'cell' if it exists
+    if 'ncells' in ds_combined.dims:
+        print(f"  Renaming dimension: 'ncells' → 'cell'")
+        sys.stdout.flush()
+        ds_combined = ds_combined.rename({'ncells': 'cell'})
     # Filter by exact date range
     ds_filtered = ds_combined.sel(time=slice(start_date, end_date))
     

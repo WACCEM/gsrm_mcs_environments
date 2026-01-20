@@ -1,0 +1,132 @@
+
+Currently Loaded Modules:
+  1) craype-x86-milan
+  2) libfabric/1.22.0
+  3) craype-network-ofi
+  4) xpmem/2.9.7-1.1_20250411150514__g191b5f8bea4c
+  5) PrgEnv-gnu/8.5.0
+  6) cray-dsmml/0.3.0
+  7) cray-libsci/24.07.0
+  8) cray-mpich/8.1.30
+  9) craype/2.7.32
+ 10) gcc-native/13.2
+ 11) perftools-base/24.07.0
+ 12) cpe/24.07
+ 13) cudatoolkit/12.4
+ 14) craype-accel-nvidia80
+ 15) gpu/1.0
+ 16) sqs/2.0
+ 17) darshan/default
+ 18) conda/Miniforge3-24.7.1-0
+ 19) python/3.11
+
+ 
+
+WARNING: Land fraction file not found: 
+Will process all tracks without land fraction filtering.
+Starting environmental variable extraction...
+Processing 1 variable(s) across 1 date range(s)
+================================================
+Processing all variables: hur
+================================================
+Processing 1 date ranges
+============================================================
+Environmental Variable Extraction
+============================================================
+Model: nicam_gl11
+Output directory: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/NICAM_all
+Variables: hur
+Number of date ranges: 1
+============================================================
+Using radii: [5.  3.5 2. ]
+Opening catalog from https://digital-earths-global-hackathon.github.io/catalog/catalog.yaml
+Loading dataset nicam_gl11...
+Detected NICAM model: Renaming 'lev' → 'pressure' dimension...
+NICAM model fix complete
+Computing HEALPix grid...
+Grid: nside=256
+Loading MCS track data from /pscratch/sd/w/wcmca1/hackathon/mcs/nicam_gl11/stats/mcs_tracks_final_20200301.0000_20210301.0000.nc
+Loaded 28791750 total track-time points
+After dropping NaN positions: 848439 valid track time points
+After spatial filtering: 835403 track time points
+This dataset will be reused for all 1 variable(s) and 1 date range(s)
+Calculating HEALPix indices...
+Using pressure levels: [850.0] hPa
+
+============================================================
+Processing variable 1/1: hur
+============================================================
+Setting up variable data (hur)...
+3D variable detected with pressure dimension
+Requested pressure levels: [850.0] hPa
+  Detected pressure units: hectopascals (median value: 400.0 hPa)
+  Pressure levels: [850.0] hPa (no conversion needed)
+Variable data ready
+
+============================================================
+Processing date range 1/1
+Date range: 2020-03-01 to 2021-03-01
+============================================================
+Filtered to 835403 track time points for this date range
+Subsampling tracks to model frequency: 6H
+Subsampled from 835403 to 157402 time points (81.2% reduction)
+Calculating circular areas for 157402 track positions...
+  Progress: 0/157402 positions processed...
+  Progress: 50000/157402 positions processed...
+  Progress: 100000/157402 positions processed...
+  Progress: 150000/157402 positions processed...
+Calculated circular areas for 472206 track-time-radius combinations
+Extracting pre-convective areas (first time step per track)...
+Extracted pre-convective areas for 44295 tracks
+Creating track time mapping...
+Extracting hur statistics for track duration...
+Loading hur data for 701994 pixels and 8759 time steps...
+Time mapping created: 8759 requested → 8759 actual times
+Processing 472206 areas with batched approach (batch_size=500)...
+  Progress: 100000/472206 areas processed...
+  Progress: 200000/472206 areas processed...
+  Progress: 300000/472206 areas processed...
+  Progress: 400000/472206 areas processed...
+Extracted hur statistics for 471229 combinations
+Adding pre-convective data (24 hours before initiation)...
+Collecting all pre-convective times and pixels for 44295 tracks...
+Loading pre-convective data: 670053 pixels × 8773 times...
+Pre-convective data loaded successfully
+Extracting pre-convective statistics for 44295 tracks...
+  Processed 10000/44295 tracks, extracted 119928 data points.
+  Processed 20000/44295 tracks, extracted 239431 data points.
+  Processed 30000/44295 tracks, extracted 358936 data points.
+  Processed 40000/44295 tracks, extracted 478909 data points.
+  Completed processing all 44295 tracks
+Added 530421 pre-convective data points
+Results saved to: /pscratch/sd/p/paccini/temp/hackathon/updated_environmental_variables/NICAM_all/hur/mcs_env_hur_20200301_20210301_hur_850hPa.parquet
+
+============================================================
+SUMMARY STATISTICS - hur - Date range 1/1
+============================================================
+Total tracks processed: 44290
+Total data points: 1001650
+Radii processed: [5.  3.5 2. ]
+Variable: hur
+Time range: -24.0h to 384.0h
+
+Extraction completed in 738.20 seconds (12.30 minutes)
+============================================================
+
+============================================================
+VARIABLE hur COMPLETED
+============================================================
+Processed 1 date range(s)
+Total time for hur: 916.74 seconds (15.28 minutes)
+============================================================
+
+============================================================
+ALL VARIABLES AND DATE RANGES COMPLETED
+============================================================
+Processed 1 variable(s)
+Processed 1 date range(s) per variable
+Total time: 933.33 seconds (15.56 minutes)
+Average per variable: 933.33 seconds
+============================================================
+Completed processing for all variables
+All processing complete at Tue 21 Oct 2025 04:33:27 PM PDT

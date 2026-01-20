@@ -2,7 +2,7 @@
 #SBATCH -N 1
 #SBATCH -C cpu
 #SBATCH -q regular
-#SBATCH -t 02:00:00
+#SBATCH -t 02:30:00
 #SBATCH -J extract_nicam_masks
 #SBATCH -A m1867
 #SBATCH --mail-user=laura.paccini@pnnl.gov
@@ -47,7 +47,7 @@ CONVERT_WA_TO_OMEGA=""  # Set to "--convert_wa_to_omega" to convert wa to omega
 CONVERT_OMEGA_TO_WA=""  # Set to "--convert_omega_to_wa" to convert omega to wa
 
 # Set variables to extract
-VARIABLES=("ps" "hflsd" "tas" "hfssd" "sfcWind" "huss")  # Add more as needed: "prw"  "clt" "hflsd" "tas" "hfssd" "sfcWind" "huss"
+VARIABLES=("ps" "hflsd" "tas" "hfssd" "sfcWind" )  # Add more as needed: "prw"  "clt" "hflsd" "tas" "hfssd" "sfcWind" "huss"
 
 # ===== EXAMPLE: Extract surface wind speed =====
 # VARIABLES=("sfcWind")  # Will be computed from uas and vas
